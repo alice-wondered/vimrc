@@ -1,7 +1,9 @@
+set hidden
 set nocompatible
 
 set showmatch
 set hlsearch
+set incsearch
 
 set tabstop=4 " num col that tab uses
 set softtabstop=4 " sets multiple spaces as tabstop 
@@ -11,6 +13,9 @@ set autoindent " automatically match indent of prev line on new line
 filetype plugin indent on 
 
 set number
+set relativenumber 
+
+set scrolloff=8
 set mouse=a "enables mouse clicks for those odd cases when it's helpful
 "set wildmode=longest,list " this apparently gives bash tab completions -- look into this 
 
@@ -56,6 +61,7 @@ Plug 'rebelot/kanagawa.nvim'
 call plug#end()
 
 lua<<EOF
+--- Configuring lualine options
 require('lualine').setup {
   options = {
     icons_enabled = true,
@@ -91,12 +97,15 @@ require('lualine').setup {
     lualine_y = {},
     lualine_z = {}
   },
-  tabline = {},
+  tabline = {
+    lualine_c = {"buffers"}
+  },
   winbar = {},
   inactive_winbar = {},
   extensions = {}
 }
 
+--- Configuring options for Tree-Sitter
 require'nvim-treesitter.configs'.setup {
   -- A list of parser names, or "all" (the five listed parsers should always be installed)
   ensure_installed = { "c", "lua", "vim", "vimdoc", "query", "go", "python", "java", "html", "css", "javascript" },
@@ -147,10 +156,15 @@ vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
 vim.keymap.set('n', '<leader>fb', builtin.buffers, {})
 vim.keymap.set('n', '<leader>fh', builtin.help_tags, {})
 
-require('lualine').setup()
+--- Turn on lualine and add lazygit to telescope
 require('telescope').load_extension('lazygit')
 
-
+--- Setting our theme 
 vim.opt.termguicolors = true
 vim.cmd.colorscheme 'kanagawa-dragon'
+
+--- Configuring LSP
+--- Python
+require'lspconfig'.pyright.setup{}
+
 EOF
