@@ -45,6 +45,14 @@ Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope-fzf-native.nvim', { 'do': 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build' }
 Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.6' }
 
+" This is all the stuff that gets downloaded just to get LSP working...
+Plug 'hrsh7th/nvim-cmp'
+Plug 'hrsh7th/cmp-nvim-lsp'
+Plug 'L3MON4D3/LuaSnip'
+Plug 'rafamadriz/friendly-snippets'
+Plug 'williamboman/mason.nvim'
+Plug 'williamboman/mason-lspconfig.nvim'
+Plug 'VonHeikemen/lsp-zero.nvim', {'branch': 'v3.x'}
 Plug 'neovim/nvim-lspconfig'
 
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
@@ -163,8 +171,69 @@ require('telescope').load_extension('lazygit')
 vim.opt.termguicolors = true
 vim.cmd.colorscheme 'kanagawa-dragon'
 
+
+
 --- Configuring LSP
---- Python
-require'lspconfig'.pyright.setup{}
+local lsp_zero = require('lsp-zero')
+
+lsp_zero.on_attach(function(client, bufnr)
+  lsp_zero.default_keymaps({buffer = bufnr})
+  lsp_zero.buffer_autoformat()
+end)
+
+--- Installing LSPs with Mason
+require("mason").setup()
+require("mason-lspconfig").setup({
+    ensure_installed = { "gopls", "html", "htmx", "jdtls", "tsserver", "pyright", "tailwindcss", "vimls", "lua_ls", "rust_analyzer" },
+    handlers = {
+        -- this first function is the "default handler"
+        -- it applies to every language server without a "custom handler"
+        function(server_name)
+            require('lspconfig')[server_name].setup({})
+        end
+    }
+})
+
+--- Disabling semantic highlighting as we are using TreeSitter for this 
+lsp_zero.set_server_config({
+  on_init = function(client)
+    client.server_capabilities.semanticTokensProvider = nil
+  end,
+})
+
+
+--- CMP plugin for autocompletion
+local cmp = require('cmp')
+
+cmp.setup({
+  sources = {
+    {name = 'nvim_lsp'},
+  },
+  mapping = {
+    ['<C-y>'] = cmp.mapping.confirm({select = false}),
+    ['<C-e>'] = cmp.mapping.abort(),
+    ['<Up>'] = cmp.mapping.select_prev_item({behavior = 'select'}),
+    ['<Down>'] = cmp.mapping.select_next_item({behavior = 'select'}),
+    ['<C-p>'] = cmp.mapping(function()
+      if cmp.visible() then
+        cmp.select_prev_item({behavior = 'insert'})
+      else
+        cmp.complete()
+      end
+    end),
+    ['<C-n>'] = cmp.mapping(function()
+      if cmp.visible() then
+        cmp.select_next_item({behavior = 'insert'})
+      else
+        cmp.complete()
+      end
+    end),
+  },
+  snippet = {
+    expand = function(args)
+      require('luasnip').lsp_expand(args.body)
+    end,
+  },
+})
 
 EOF
