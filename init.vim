@@ -67,9 +67,17 @@ Plug 'kdheepak/lazygit.nvim'
 
 Plug 'rhysd/git-messenger.vim'
 Plug 'rebelot/kanagawa.nvim'
+
+" Glow does markdown rendering...
+Plug 'ellisonleao/glow.nvim'
+
 call plug#end()
 
 lua<<EOF
+
+--- Setup for glow markdown renderer
+require('glow').setup()
+
 --- Configuring lualine options
 require('lualine').setup {
   options = {
