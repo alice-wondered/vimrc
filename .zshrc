@@ -24,5 +24,3 @@ antigen apply
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 bindkey -v
-
-# PUT ALL YOUR ENV VARS AND PATH STUFF IN .zprofile BECAUSE THEY'RE SYSTEM SPECIFIC AND THEN YOU CAN JUST DROP THIS IN ANYWHERE :)
