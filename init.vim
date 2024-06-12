@@ -67,17 +67,9 @@ Plug 'kdheepak/lazygit.nvim'
 
 Plug 'rhysd/git-messenger.vim'
 Plug 'rebelot/kanagawa.nvim'
-
-" Glow does markdown rendering...
-Plug 'ellisonleao/glow.nvim'
-
 call plug#end()
 
 lua<<EOF
-
---- Setup for glow markdown renderer
-require('glow').setup()
-
 --- Configuring lualine options
 require('lualine').setup {
   options = {
@@ -214,13 +206,16 @@ lsp_zero.set_server_config({
 
 --- CMP plugin for autocompletion
 local cmp = require('cmp')
+local cmp_action = require('lsp-zero').cmp_action()
 
 cmp.setup({
   sources = {
     {name = 'nvim_lsp'},
   },
   mapping = {
-    ['<C-y>'] = cmp.mapping.confirm({select = false}),
+    ['<CR>'] = cmp.mapping.confirm({select = true}),
+    ['<Tab>'] = cmp_action.tab_complete(),
+    ['<S-Tab>'] = cmp_action.select_prev_or_fallback(),
     ['<C-e>'] = cmp.mapping.abort(),
     ['<Up>'] = cmp.mapping.select_prev_item({behavior = 'select'}),
     ['<Down>'] = cmp.mapping.select_next_item({behavior = 'select'}),
