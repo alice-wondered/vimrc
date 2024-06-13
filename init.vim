@@ -40,6 +40,7 @@ autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
 
 call plug#begin()
 Plug 'nvim-lua/plenary.nvim'
+Plug 'cohama/lexima.vim'
 
 " If you're reading this wondering why some search features aren't working
 " it's probably because you need to install ripgrep :)
@@ -244,5 +245,4 @@ cmp.setup({
 --- QOL keymaps
 vim.keymap.set("n", "<C-d>", "<C-d>zz", {desc = "Center cursor after moving down half-page"})
 vim.keymap.set("n", "<C-u>", "<C-u>zz", {desc = "Center cursor after moving up half-page"})
-
 EOF
