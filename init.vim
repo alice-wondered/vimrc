@@ -39,9 +39,10 @@ autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
 \| endif
 
 call plug#begin()
-Plug 'nvim-lua/plenary.nvim'
-Plug 'cohama/lexima.vim'
+Plug 'nvim-lua/plenary.nvim' " This is just a library of utility functions
 Plug 'alvan/vim-closetag'
+Plug 'abecodes/tabout.nvim'
+Plug 'windwp/nvim-autopairs'
 
 " If you're reading this wondering why some search features aren't working
 " it's probably because you need to install ripgrep :)
@@ -216,8 +217,26 @@ cmp.setup({
   },
   mapping = {
     ['<CR>'] = cmp.mapping.confirm({select = true}),
-    ['<Tab>'] = cmp_action.tab_complete(),
-    ['<S-Tab>'] = cmp_action.select_prev_or_fallback(),
+    ["<Tab>"] = function(fallback)
+        if cmp.visible() then
+            -- cmp.select_next_item
+            cmp.confirm(
+            {
+                    behavior = cmp.ConfirmBehavior.Insert,
+                    select = true
+            }
+        )
+        else
+            fallback()
+        end
+    end,
+    ["<S-Tab>"] = function(fallback)
+        if cmp.visible() then
+            cmp.select_prev_item()
+        else
+            fallback()
+        end
+    end,
     ['<C-e>'] = cmp.mapping.abort(),
     ['<Up>'] = cmp.mapping.select_prev_item({behavior = 'select'}),
     ['<Down>'] = cmp.mapping.select_next_item({behavior = 'select'}),
@@ -242,6 +261,10 @@ cmp.setup({
     end,
   },
 })
+
+require('tabout').setup({})
+
+require("nvim-autopairs").setup {}
 
 --- QOL keymaps
 vim.keymap.set("n", "<C-d>", "<C-d>zz", {desc = "Center cursor after moving down half-page"})
