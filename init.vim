@@ -220,20 +220,14 @@ cmp.setup({
     ['<CR>'] = cmp.mapping.confirm({select = true}),
     ["<Tab>"] = function(fallback)
         if cmp.visible() then
-            -- cmp.select_next_item
-            cmp.confirm(
-            {
-                    behavior = cmp.ConfirmBehavior.Insert,
-                    select = true
-            }
-        )
+            cmp.select_next_item({behavior = 'insert'})
         else
             fallback()
         end
     end,
     ["<S-Tab>"] = function(fallback)
         if cmp.visible() then
-            cmp.select_prev_item()
+            cmp.select_prev_item({behavior = 'insert'})
         else
             fallback()
         end
@@ -261,9 +255,38 @@ cmp.setup({
       require('luasnip').lsp_expand(args.body)
     end,
   },
+  completion = { completeopt = "noselect" },
+  preselect = cmp.PreselectMode.None
 })
 
-require('tabout').setup({})
+--- this block is really meant to address tab conflicts but cmp already has a handler for it
+--- require('tabout').setup({
+---     tabkey = "",
+---     backwards_tabkey = "",
+--- })
+--- 
+--- local function replace_keycodes(str)
+---   return vim.api.nvim_replace_termcodes(str, true, true, false)
+--- end
+--- 
+--- function _G.tab_binding()
+---   if vim.fn.pumvisible() ~= 0 then
+---     return replace_keycodes("<C-n>")
+---   else
+---     return replace_keycodes("<Plug>(Tabout)")
+---   end
+--- end
+--- 
+--- function _G.s_tab_binding()
+---   if vim.fn.pumvisible() ~= 0 then
+---     return replace_keycodes("<C-p>")
+---   else
+---     return replace_keycodes("<Plug>(TaboutBack)")
+---   end
+--- end
+--- 
+--- vim.api.nvim_set_keymap("i", "<Tab>", "v:lua.tab_binding()", {expr = true})
+--- vim.api.nvim_set_keymap("i", "<S-Tab>", "v:lua.s_tab_binding()", {expr = true})
 
 require("nvim-autopairs").setup {}
 
