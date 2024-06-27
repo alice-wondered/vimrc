@@ -43,6 +43,7 @@ Plug 'nvim-lua/plenary.nvim' " This is just a library of utility functions
 Plug 'alvan/vim-closetag'
 Plug 'abecodes/tabout.nvim'
 Plug 'windwp/nvim-autopairs'
+Plug 'numToStr/Comment.nvim'
 
 " If you're reading this wondering why some search features aren't working
 " it's probably because you need to install ripgrep :)
@@ -260,10 +261,7 @@ cmp.setup({
 })
 
 --- this block is really meant to address tab conflicts but cmp already has a handler for it
---- require('tabout').setup({
----     tabkey = "",
----     backwards_tabkey = "",
---- })
+require('tabout').setup({})
 --- 
 --- local function replace_keycodes(str)
 ---   return vim.api.nvim_replace_termcodes(str, true, true, false)
@@ -289,6 +287,7 @@ cmp.setup({
 --- vim.api.nvim_set_keymap("i", "<S-Tab>", "v:lua.s_tab_binding()", {expr = true})
 
 require("nvim-autopairs").setup {}
+require("Comment").setup()
 
 --- QOL keymaps
 vim.keymap.set("n", "<C-d>", "<C-d>zz", {desc = "Center cursor after moving down half-page"})
