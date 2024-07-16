@@ -71,6 +71,7 @@ Plug 'kdheepak/lazygit.nvim'
 
 Plug 'rhysd/git-messenger.vim'
 Plug 'rebelot/kanagawa.nvim'
+Plug 'luckasRanarison/tailwind-tools.nvim'
 call plug#end()
 
 lua<<EOF
@@ -288,6 +289,8 @@ require('tabout').setup({})
 
 require("nvim-autopairs").setup {}
 require("Comment").setup()
+
+require("tailwind-tools").setup({})
 
 --- QOL keymaps
 vim.keymap.set("n", "<C-d>", "<C-d>zz", {desc = "Center cursor after moving down half-page"})
