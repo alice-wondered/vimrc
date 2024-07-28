@@ -24,3 +24,4 @@ antigen apply
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 bindkey -v
+alias gitroot='cd $(git rev-parse --show-toplevel)'
