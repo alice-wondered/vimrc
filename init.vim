@@ -53,6 +53,7 @@ Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.6' }
 " This is all the stuff that gets downloaded just to get LSP working...
 Plug 'hrsh7th/nvim-cmp'
 Plug 'hrsh7th/cmp-nvim-lsp'
+Plug 'onsails/lspkind.nvim'
 Plug 'L3MON4D3/LuaSnip'
 Plug 'rafamadriz/friendly-snippets'
 Plug 'williamboman/mason.nvim'
@@ -213,6 +214,7 @@ lsp_zero.set_server_config({
 --- CMP plugin for autocompletion
 local cmp = require('cmp')
 local cmp_action = require('lsp-zero').cmp_action()
+local lspkind = require('lspkind')
 
 cmp.setup({
   sources = {
@@ -258,7 +260,19 @@ cmp.setup({
     end,
   },
   completion = { completeopt = "noselect" },
-  preselect = cmp.PreselectMode.None
+  preselect = cmp.PreselectMode.None,
+  formatting = {
+      format = lspkind.cmp_format({
+        before = require("tailwind-tools.cmp").lspkind_format,
+        mode = 'symbol',
+        maxwidth = 50,
+        ellipsis_char = '...',
+        show_labelDetails = true,
+        before = function (entry, vim_item)
+            return vim_item
+        end
+    })
+ },
 })
 
 --- this block is really meant to address tab conflicts but cmp already has a handler for it
