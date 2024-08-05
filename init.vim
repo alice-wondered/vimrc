@@ -71,7 +71,7 @@ Plug 'nvim-tree/nvim-web-devicons'
 Plug 'kdheepak/lazygit.nvim'
 
 Plug 'rhysd/git-messenger.vim'
-Plug 'rebelot/kanagawa.nvim'
+Plug 'folke/tokyonight.nvim'
 Plug 'luckasRanarison/tailwind-tools.nvim'
 call plug#end()
 
@@ -80,7 +80,7 @@ lua<<EOF
 require('lualine').setup {
   options = {
     icons_enabled = true,
-    theme = 'auto',
+    theme = 'tokyonight-storm',
     component_separators = { left = '', right = ''},
     section_separators = { left = '', right = ''},
     disabled_filetypes = {
@@ -177,8 +177,8 @@ vim.keymap.set('n', '<leader>fh', builtin.help_tags, {})
 require('telescope').load_extension('lazygit')
 
 --- Setting our theme 
-vim.opt.termguicolors = true
-vim.cmd.colorscheme 'kanagawa-dragon'
+-- vim.opt.termguicolors = true
+vim.cmd.colorscheme 'tokyonight-storm'
 
 
 
