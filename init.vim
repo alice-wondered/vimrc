@@ -178,7 +178,7 @@ require('telescope').load_extension('lazygit')
 
 --- Setting our theme 
 -- vim.opt.termguicolors = true
-vim.cmd.colorscheme 'tokyonight-storm'
+vim.cmd.colorscheme 'tokyonight-moon'
 
 
 
