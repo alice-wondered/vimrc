@@ -72,6 +72,7 @@ Plug 'kdheepak/lazygit.nvim'
 
 Plug 'rhysd/git-messenger.vim'
 Plug 'folke/tokyonight.nvim'
+Plug 'catppuccin/nvim', { 'as': 'catppuccin' }   
 Plug 'luckasRanarison/tailwind-tools.nvim'
 call plug#end()
 
@@ -80,7 +81,7 @@ lua<<EOF
 require('lualine').setup {
   options = {
     icons_enabled = true,
-    theme = 'tokyonight-storm',
+    theme = "catppuccin",
     component_separators = { left = '', right = ''},
     section_separators = { left = '', right = ''},
     disabled_filetypes = {
@@ -178,8 +179,26 @@ require('telescope').load_extension('lazygit')
 
 --- Setting our theme 
 -- vim.opt.termguicolors = true
-vim.cmd.colorscheme 'tokyonight-moon'
+vim.cmd.colorscheme "catppuccin"
 
+require("catppuccin").setup({
+    flavour = "macchiato",
+    integrations = {
+        cmp = true,
+        -- gitsigns = true,
+        -- nvimtree = true,
+        treesitter = true,
+        mason = true, 
+        telescope = {
+            enabled = true
+        },
+        -- notify = false,
+        mini = {
+            enabled = true,
+            indentscope_color = "",
+        },
+    }
+})
 
 
 --- Configuring LSP
