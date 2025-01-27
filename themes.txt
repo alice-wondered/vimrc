@@ -1,0 +1,5 @@
+git@github.com:catppuccin/youtubemusic.git
+git@github.com:catppuccin/firefox.git
+git@github.com:catppuccin/alacritty.git
+git@github.com:catppuccin/kde.git
+git@github.com:catppuccin/tmux.git
