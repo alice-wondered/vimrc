@@ -72,7 +72,6 @@ Plug 'kdheepak/lazygit.nvim'
 
 Plug 'rhysd/git-messenger.vim'
 Plug 'folke/tokyonight.nvim'
-Plug 'catppuccin/nvim', { 'as': 'catppuccin' }   
 Plug 'luckasRanarison/tailwind-tools.nvim'
 call plug#end()
 
@@ -81,7 +80,7 @@ lua<<EOF
 require('lualine').setup {
   options = {
     icons_enabled = true,
-    theme = "catppuccin",
+    theme = 'tokyonight-storm',
     component_separators = { left = '', right = ''},
     section_separators = { left = '', right = ''},
     disabled_filetypes = {
@@ -179,26 +178,8 @@ require('telescope').load_extension('lazygit')
 
 --- Setting our theme 
 -- vim.opt.termguicolors = true
-vim.cmd.colorscheme "catppuccin"
+vim.cmd.colorscheme 'tokyonight-moon'
 
-require("catppuccin").setup({
-    flavour = "macchiato",
-    integrations = {
-        cmp = true,
-        -- gitsigns = true,
-        -- nvimtree = true,
-        treesitter = true,
-        mason = true, 
-        telescope = {
-            enabled = true
-        },
-        -- notify = false,
-        mini = {
-            enabled = true,
-            indentscope_color = "",
-        },
-    }
-})
 
 
 --- Configuring LSP
@@ -212,7 +193,7 @@ end)
 --- Installing LSPs with Mason
 require("mason").setup()
 require("mason-lspconfig").setup({
-    ensure_installed = { "gopls", "html", "htmx", "jdtls", "tsserver", "pyright", "tailwindcss", "vimls", "lua_ls", "rust_analyzer" },
+    ensure_installed = { "gopls", "html", "htmx", "jdtls", "tsserver", "basedpyright", "tailwindcss", "vimls", "lua_ls", "rust_analyzer" },
     handlers = {
         -- this first function is the "default handler"
         -- it applies to every language server without a "custom handler"
