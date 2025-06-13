@@ -5,7 +5,10 @@ TERM="xterm-256color"
 normal = { family = "0xProto Nerd Font", style = "Regular" }
 
 [general]
-import = [ "catppuccin-mocha.toml"]
+import = [ "catppuccin.toml"]
 
 [window]
 opacity = 0.95
+
+[cursor.style]
+blinking = "On"
