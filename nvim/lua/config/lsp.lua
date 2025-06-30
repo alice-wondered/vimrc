@@ -2,23 +2,35 @@ local vim = vim
 
 -- Installing LSPs with Mason
 require("mason").setup()
-require("mason-lspconfig").setup({
-    ensure_installed = {
-        "gopls", "html", "htmx", "jdtls", "basedpyright", "tailwindcss",
-        "vimls", "lua_ls", "rust_analyzer", "ts_ls", "jsonls", "cssls"
-    },
-    handlers = {
-        function(server_name)
-            require('lspconfig')[server_name].setup({})
-        end
-    }
-})
+-- require("mason-lspconfig").setup({
+--     ensure_installed = {
+--         "gopls", "html", "htmx", "jdtls", "basedpyright", "tailwindcss",
+--         "vimls", "lua_ls", "rust_analyzer", "ts_ls", "jsonls", "cssls"
+--     },
+--     automatic_installation = false
+-- })
 
 local cap = require("cmp_nvim_lsp").default_capabilities()
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+for k, v in pairs(cap) do
+    capabilities[k] = v
+end
+
+capabilities.textDocument.codeAction = {
+    dynamicRegistration = true,
+    codeActionLiteralSupport = {
+        codeActionKind = {
+            valueSet = {
+                "",
+            },
+        },
+    },
+}
+
 local lspconfig = require('lspconfig')
 local servers = {
     'rust_analyzer', 'gopls', 'html', 'htmx', 'tailwindcss',
-    'jdtls', 'basedpyright', 'vimls', 'lua_ls', 'ts_ls', 'jsonls', 'cssls'
+    'jdtls', 'basedpyright', 'vimls', 'lua_ls', 'ts_ls', 'jsonls', 'cssls', 'postgres_lsp',
 }
 
 -- Keymaps for LSP actions
@@ -30,13 +42,13 @@ local on_attach = function(client, bufnr)
     local set_lsp_keymap = function(mode, lhs, rhs, desc)
         -- DEBUG: Print information about the keymap being set
         local rhs_type = type(rhs)
-        print(string.format("LSP Keymap Debug: Trying to set '%s'. RHS type is '%s'.", lhs, rhs_type))
+        -- print(string.format("LSP Keymap Debug: Trying to set '%s'. RHS type is '%s'.", lhs, rhs_type))
 
         if rhs_type == 'function' then
             vim.keymap.set(mode, lhs, rhs, vim.tbl_extend('force', opts, { desc = desc }))
         else
             -- DEBUG: Explicitly print when a keymap is skipped
-            print(string.format("LSP Keymap Debug: SKIPPED setting '%s' because RHS is not a function.", lhs))
+            -- print(string.format("LSP Keymap Debug: SKIPPED setting '%s' because RHS is not a function.", lhs))
         end
     end
 
@@ -96,22 +108,34 @@ local on_attach = function(client, bufnr)
     --     })
     -- end
 
+    -- for whatever reason, this doesn't work
     -- Enable "Format on Save" (optional)
-    vim.api.nvim_create_autocmd("BufWritePre", {
-        buffer = bufnr,
-        callback = function()
-            if client.supports_method("textDocument/formatting") then
-                vim.lsp.buf.format({ async = true })
-            end
-        end,
-        desc = "Format on save"
-    })
+    -- In lua/config/lsp.lua, inside your on_attach function
+    -- vim.api.nvim_create_autocmd("BufWritePre", {
+    --     group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
+    --     buffer = bufnr,
+    --     callback = function()
+    --         -- This 'if' check is key: it verifies the attached LSP client supports formatting
+    --         if client.supports_method("textDocument/formatting") then
+    --             vim.lsp.buf.format({ bufnr = bufnr })
+    --         end
+    --     end,
+    -- })
+    -- vim.api.nvim_create_autocmd("BufWritePre", {
+    --     buffer = bufnr,
+    --     callback = function()
+    --         if client.supports_method("textDocument/formatting") then
+    --             vim.lsp.buf.format({ async = true })
+    --         end
+    --     end,
+    --     desc = "Format on save"
+    -- })
 end
 
 -- Setup LSP servers with on_attach
 for _, lsp in ipairs(servers) do
     lspconfig[lsp].setup {
-        capabilities = cap,
+        capabilities = capabilities,
         on_attach = on_attach, -- Attach common keymaps and autocommands
     }
 end
@@ -123,6 +147,6 @@ vim.diagnostic.config({
     virtual_text = { severity = { min = vim.diagnostic.severity.ERROR } },
     signs = true,
     underline = true,
-    update_in_insert = false,
+    update_in_insert = true,
     severity_sort = false,
 })

@@ -1,8 +1,11 @@
+local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
 return {
     'nvim-lua/plenary.nvim',
     {
         'echasnovski/mini.nvim',
         config = function()
+            require('mini.statusline').setup()
+            require('mini.tabline').setup()
             require('mini.comment').setup()
             require('mini.pairs').setup()
             require('mini.surround').setup()
@@ -31,7 +34,46 @@ return {
     'hrsh7th/cmp-buffer',
     'hrsh7th/cmp-path',
     'hrsh7th/cmp-cmdline',
+    {
+        'nvimtools/none-ls.nvim',
+        dependencies = { 'nvim-lua/plenary.nvim' },
+        config = function()
+            local null_ls = require('null-ls')
 
+            local formatting_sources = {
+                null_ls.builtins.formatting.stylua, -- Lua
+                null_ls.builtins.formatting.prettier, -- JavaScript, TypeScript, JSON
+                null_ls.builtins.formatting.prettierd, -- JavaScript, TypeScript, JSON
+                null_ls.builtins.formatting.shfmt, -- Shell
+                null_ls.builtins.formatting.markdownlint, -- Markdown
+                null_ls.builtins.formatting.black, -- Python
+                null_ls.builtins.formatting.gofmt, -- Go
+                null_ls.builtins.formatting.goimports,
+            }
+
+            null_ls.setup({
+                sources = formatting_sources,
+                on_attach = function(client, bufnr)
+                    if client.supports_method('textDocument/formatting') then
+                        vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
+                        vim.api.nvim_create_autocmd('BufWritePre', {
+                            group = augroup,
+                            buffer = bufnr,
+                            callback = function()
+                                vim.lsp.buf.format({ 
+                                    async = false,
+                                    bufnr = bufnr,
+                                    filter = function(client)
+                                        return client.name == 'null-ls'
+                                    end
+                                })
+                            end,
+                        })
+                    end
+                end,
+            })
+        end,
+    },
     -- Treesitter
     {
         'nvim-treesitter/nvim-treesitter',
