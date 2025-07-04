@@ -2,13 +2,6 @@ local vim = vim
 
 -- Installing LSPs with Mason
 require("mason").setup()
--- require("mason-lspconfig").setup({
---     ensure_installed = {
---         "gopls", "html", "htmx", "jdtls", "basedpyright", "tailwindcss",
---         "vimls", "lua_ls", "rust_analyzer", "ts_ls", "jsonls", "cssls"
---     },
---     automatic_installation = false
--- })
 
 local cap = require("cmp_nvim_lsp").default_capabilities()
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -27,11 +20,7 @@ capabilities.textDocument.codeAction = {
     },
 }
 
-local lspconfig = require('lspconfig')
-local servers = {
-    'rust_analyzer', 'gopls', 'html', 'htmx', 'tailwindcss',
-    'jdtls', 'basedpyright', 'vimls', 'lua_ls', 'ts_ls', 'jsonls', 'cssls', 'postgres_lsp',
-}
+
 
 -- Keymaps for LSP actions
 local on_attach = function(client, bufnr)
@@ -108,19 +97,18 @@ local on_attach = function(client, bufnr)
     --     })
     -- end
 
-    -- for whatever reason, this doesn't work
     -- Enable "Format on Save" (optional)
     -- In lua/config/lsp.lua, inside your on_attach function
-    -- vim.api.nvim_create_autocmd("BufWritePre", {
-    --     group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
-    --     buffer = bufnr,
-    --     callback = function()
-    --         -- This 'if' check is key: it verifies the attached LSP client supports formatting
-    --         if client.supports_method("textDocument/formatting") then
-    --             vim.lsp.buf.format({ bufnr = bufnr })
-    --         end
-    --     end,
-    -- })
+    vim.api.nvim_create_autocmd("BufWritePre", {
+        group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
+        buffer = bufnr,
+        callback = function()
+            -- This 'if' check is key: it verifies the attached LSP client supports formatting
+            if client.supports_method("textDocument/formatting") then
+                vim.lsp.buf.format({ bufnr = bufnr })
+            end
+        end,
+    })
     -- vim.api.nvim_create_autocmd("BufWritePre", {
     --     buffer = bufnr,
     --     callback = function()
@@ -132,13 +120,69 @@ local on_attach = function(client, bufnr)
     -- })
 end
 
+local lspconfig = require('lspconfig')
+local default_servers = {'biome', 'rust_analyzer', 'gopls', 'html', 'tailwindcss', 'basedpyright', 'vimls', 'lua_ls', 'marksman', 'cssls', 'jsonls'}
+
+-- Helper to find the monorepo root (independent of null-ls utils)
+local function find_monorepo_root(start_path)
+    -- `lspconfig.util.root_pattern` is a safe way to find roots provided by lspconfig itself.
+    local root = lspconfig.util.root_pattern(
+        "pnpm-workspace.yaml", ".git", "package.json"
+    )(start_path)
+    if root and vim.fn.isdirectory(root .. "/node_modules/.bin") then
+        return root
+    end
+    return nil
+end
+
 -- Setup LSP servers with on_attach
-for _, lsp in ipairs(servers) do
+for _, lsp in ipairs(default_servers) do
     lspconfig[lsp].setup {
         capabilities = capabilities,
         on_attach = on_attach, -- Attach common keymaps and autocommands
     }
 end
+
+lspconfig.ts_ls.setup {
+    on_attach = on_attach,
+    capabilities = capabilities,
+    root_dir = function(fname)
+        return find_monorepo_root(fname) or lspconfig.util.root_pattern("tsconfig.json", "package.json")(fname)
+    end,
+}
+
+-- Helper to construct a pnpm exec command that CD's to the monorepo root
+local function pnpm_exec_cmd(server_binary_path, ...)
+    local current_file = vim.fn.expand('%:p')
+    local monorepo_root = find_monorepo_root(current_file) or vim.fn.getcwd()
+
+    local all_args = { "exec", server_binary_path, unpack({...}) }
+
+    local cmd_str = "cd " .. vim.fn.fnameescape(monorepo_root) .. " && " ..
+    "pnpm " .. table.concat(all_args, " ")
+
+    return { "bash", "-c", cmd_str }
+end
+
+-- Explicitly setup customized LSP servers with their specific configs
+-- 1. ts_ls (for TypeScript type-checking, completions, etc. - RENAMED FROM tsserver)
+lspconfig.ts_ls.setup {
+    root_markers = { '.git', 'tsconfig.json', 'jsconfig.json', 'package.json', },
+    settings = {
+        typescript = {
+            format = { enabled = false },
+        },
+        javascript = {
+            format = { enabled = false },
+        },
+    },
+    on_attach = function(client, bufnr)
+        on_attach(client, bufnr)
+        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
+    end,
+    capabilities = capabilities,
+}
 
 -- Tailwind-Tools integration for LSP completion kind
 require("tailwind-tools").setup({})

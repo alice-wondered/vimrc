@@ -1,43 +1,71 @@
 -- lua/config/keymaps.lua
 local vim = vim
 
+local map = vim.keymap.set
 local opts = { noremap = true, silent = true }
 
--- Telescope keymaps (unchanged)
-vim.keymap.set('n', '<leader>ff', require('telescope.builtin').find_files, { desc = "Find files" })
-vim.keymap.set('n', '<leader>fg', require('telescope.builtin').live_grep, { desc = "Live Grep" })
-vim.keymap.set('n', '<leader>gf', require('telescope.builtin').git_files, { desc = "Git Files" })
-vim.keymap.set('n', '<leader>fb', require('telescope.builtin').buffers, { desc = "Buffers" })
-vim.keymap.set('n', '<leader>fh', require('telescope.builtin').help_tags, { desc = "Help Tags" })
+-- fzf-lua
+local fzf = require("fzf-lua")
+-- files & buffers
+map('n', '<leader>ff', fzf.files, opts)
+map('n', '<leader>fb', fzf.buffers, opts)
+map('n', '<leader>fg', fzf.grep, opts)
+
+-- git
+map('n', '<leader>gf', fzf.git_files, opts)
+map('n', '<leader>gc', fzf.git_commits, opts)
+map('n', '<leader>gb', fzf.git_branches, opts)
+map('n', '<leader>gs', fzf.git_status, opts)
+
+-- LSP symbols
+map('n', '<leader>ss', fzf.lsp_document_symbols, opts)
+map('n', '<leader>sw', fzf.lsp_workspace_symbols, opts)
+map('n', '<leader>gd', fzf.lsp_definitions, opts)
+map('n', '<leader>gr', fzf.lsp_references, opts)
+
+local harpoon = require("harpoon")
+harpoon:setup()
+
+vim.keymap.set("n", "<leader>a", function() harpoon:list():add() end)
+vim.keymap.set("n", "<leader>l", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end)
+
+vim.keymap.set("n", "<leader>z", function() harpoon:list():select(1) end)
+vim.keymap.set("n", "<leader>x", function() harpoon:list():select(2) end)
+vim.keymap.set("n", "<leader>c", function() harpoon:list():select(3) end)
+vim.keymap.set("n", "<leader>v", function() harpoon:list():select(4) end)
+
+-- Toggle previous & next buffers stored within Harpoon list
+vim.keymap.set("n", "<C-S-P>", function() harpoon:list():prev() end)
+vim.keymap.set("n", "<C-S-N>", function() harpoon:list():next() end)
 
 -- QOL keymaps (unchanged)
-vim.keymap.set("n", "<C-d>", "<C-d>zz", { desc = "Center cursor after moving down half-page" })
-vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Center cursor after moving up half-page" })
+map("n", "<C-d>", "<C-d>zz", { desc = "Center cursor after moving down half-page" })
+map("n", "<C-u>", "<C-u>zz", { desc = "Center cursor after moving up half-page" })
 
 -- Window navigation
-vim.keymap.set("n", "<C-h>", "<C-w>h", opts)
-vim.keymap.set("n", "<C-j>", "<C-w>j", opts)
-vim.keymap.set("n", "<C-k>", "<C-w>k", opts)
-vim.keymap.set("n", "<C-l>", "<C-w>l", opts)
+map("n", "<C-h>", "<C-w>h", opts)
+map("n", "<C-j>", "<C-w>j", opts)
+map("n", "<C-k>", "<C-w>k", opts)
+map("n", "<C-l>", "<C-w>l", opts)
 
 -- Buffer navigation
-vim.keymap.set("n", "<Tab>", ":bnext<CR>", { desc = "Next buffer" })
-vim.keymap.set("n", "<S-Tab>", ":bprevious<CR>", { desc = "Previous buffer" })
+map("n", "<Tab>", ":bnext<CR>", { desc = "Next buffer" })
+map("n", "<S-Tab>", ":bprevious<CR>", { desc = "Previous buffer" })
 
 -- Easier saving and quitting
-vim.keymap.set("n", "<leader>w", ":w<CR>", { desc = "Save" })
-vim.keymap.set("n", "<leader>q", ":q<CR>", { desc = "Quit" })
-vim.keymap.set("n", "<leader>Q", ":qa!<CR>", { desc = "Quit all (force)" })
+map("n", "<leader>w", ":w<CR>", { desc = "Save" })
+map("n", "<leader>q", ":q<CR>", { desc = "Quit" })
+map("n", "<leader>Q", ":qa!<CR>", { desc = "Quit all (force)" })
 
 -- Clear search highlights
-vim.keymap.set("n", "<leader>nh", ":nohlsearch<CR>", { desc = "Clear search highlights" })
+map("n", "<leader>nh", ":nohlsearch<CR>", { desc = "Clear search highlights" })
 
 -- New: Terminal Mappings (if you use :term)
-vim.keymap.set("n", "<leader>tt", ":vsplit term://bash<CR>", { desc = "Open vertical terminal" })
-vim.keymap.set("n", "<leader>ft", ":split term://bash<CR>", { desc = "Open horizontal terminal" })
+map("n", "<leader>tt", ":vsplit term://bash<CR>", { desc = "Open vertical terminal" })
+map("n", "<leader>ft", ":split term://bash<CR>", { desc = "Open horizontal terminal" })
 
 -- Insert mode navigation
-vim.keymap.set("i", "<C-h>", "<Left>", opts)
-vim.keymap.set("i", "<C-l>", "<Right>", opts)
-vim.keymap.set("i", "<C-j>", "<Down>", opts)
-vim.keymap.set("i", "<C-k>", "<Up>", opts)
+map("i", "<C-h>", "<Left>", opts)
+map("i", "<C-l>", "<Right>", opts)
+map("i", "<C-j>", "<Down>", opts)
+map("i", "<C-k>", "<Up>", opts)

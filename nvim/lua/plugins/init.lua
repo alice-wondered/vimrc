@@ -11,48 +11,42 @@ return {
             require('mini.surround').setup()
             require('mini.ai').setup()
             require('mini.snippets').setup()
+            require('mini.icons').setup()
         end,
     },
     'onsails/lspkind.nvim', -- For nvim-cmp icons
-    -- Fuzzy Finder (Telescope)
     {
-        'nvim-telescope/telescope-fzf-native.nvim',
-        build =
-        'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build',
-    },
-    {
-        'nvim-telescope/telescope.nvim',
-        tag = '0.1.8',
-        dependencies = { 'nvim-lua/plenary.nvim' },
-    },
+        "ibhagwan/fzf-lua",
+        dependencies = { "echasnovski/mini.icons" },
+        opts = {},
+        config = function()
+            require("fzf-lua").setup {
+                defaults = {
+                    file_icons = "mini",
+                }
 
+            }
+        end,
+    },
+    {
+        "ThePrimeagen/harpoon",
+        branch = "harpoon2",
+        dependencies = { "nvim-lua/plenary.nvim" },
+    },
     -- Autocomplete (nvim-cmp and LSP setup)
     'neovim/nvim-lspconfig',
     'williamboman/mason.nvim',
-    'williamboman/mason-lspconfig.nvim',
     'hrsh7th/cmp-nvim-lsp',
     'hrsh7th/cmp-buffer',
     'hrsh7th/cmp-path',
     'hrsh7th/cmp-cmdline',
+    --- we specifically use this for prettier right now, everything else is LSP based
     {
         'nvimtools/none-ls.nvim',
         dependencies = { 'nvim-lua/plenary.nvim' },
         config = function()
             local null_ls = require('null-ls')
-
-            local formatting_sources = {
-                null_ls.builtins.formatting.stylua, -- Lua
-                null_ls.builtins.formatting.prettier, -- JavaScript, TypeScript, JSON
-                null_ls.builtins.formatting.prettierd, -- JavaScript, TypeScript, JSON
-                null_ls.builtins.formatting.shfmt, -- Shell
-                null_ls.builtins.formatting.markdownlint, -- Markdown
-                null_ls.builtins.formatting.black, -- Python
-                null_ls.builtins.formatting.gofmt, -- Go
-                null_ls.builtins.formatting.goimports,
-            }
-
             null_ls.setup({
-                sources = formatting_sources,
                 on_attach = function(client, bufnr)
                     if client.supports_method('textDocument/formatting') then
                         vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
@@ -60,7 +54,7 @@ return {
                             group = augroup,
                             buffer = bufnr,
                             callback = function()
-                                vim.lsp.buf.format({ 
+                                vim.lsp.buf.format({
                                     async = false,
                                     bufnr = bufnr,
                                     filter = function(client)
@@ -73,6 +67,29 @@ return {
                 end,
             })
         end,
+    },
+    {
+        'MunifTanjim/prettier.nvim',
+        dependencies = { 'neovim/nvim-lspconfig', 'nvimtools/none-ls.nvim' },
+        config = function()
+            local prettier = require("prettier")
+            prettier.setup({
+                ["null-ls"] = {
+                    condition = function()
+                        return prettier.config_exists({
+                            -- if `false`, skips checking `package.json` for `"prettier"` key
+                            check_package_json = true,
+                        })
+                    end,
+                    runtime_condition = function(params)
+                        -- return false to skip running prettier
+                        return true
+                    end,
+                    timeout = 5000,
+                }
+            })
+        end,
+
     },
     -- Treesitter
     {
@@ -133,6 +150,8 @@ return {
                         goto_next_start = {
                             [']]'] = '@function.outer',
                             [']['] = '@class.outer',
+                            [']P'] = '@parameter.outer',
+                            [']p'] = '@parameter.inner',
                         },
                         goto_next_end = {
                             ['M]]'] = '@function.outer',
@@ -295,4 +314,14 @@ return {
             })
         end,
     },
+    {
+        'MeanderingProgrammer/render-markdown.nvim',
+        dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.nvim' }, -- if you use the mini.nvim suite
+        ---@module 'render-markdown'
+        ---@type render.md.UserConfig
+        opts = {},
+        config = function()
+            require('render-markdown').setup({ completions = { lsp = { enabled = true } } })
+        end,
+    }
 }
