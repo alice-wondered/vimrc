@@ -20,8 +20,6 @@ capabilities.textDocument.codeAction = {
     },
 }
 
-
-
 -- Keymaps for LSP actions
 local on_attach = function(client, bufnr)
     -- Enable completion (already handled by nvim-cmp but good to be explicit)
@@ -79,61 +77,24 @@ local on_attach = function(client, bufnr)
         })
     end
 
-    -- -- Enable completion on `.` (or other trigger characters)
-    -- if client.server_capabilities.completionProvider and client.server_capabilities.completionProvider.triggerCharacters then
-    --     vim.api.nvim_create_autocmd("TextChangedI", {
-    --         buffer = bufnr,
-    --         callback = function()
-    --             local line = vim.api.nvim_get_current_line()
-    --             local col = vim.api.nvim_win_get_cursor(0)[2]
-    --             local char = line:sub(col, col)
-    --             if vim.tbl_contains(client.server_capabilities.completionProvider.triggerCharacters, char) then
-    --                 vim.defer_fn(function()
-    --                     vim.lsp.buf.completion()
-    --                 end, 100) -- Small delay to allow character to be inserted
-    --             end
-    --         end,
-    --         desc = "Trigger completion on special characters"
-    --     })
-    -- end
-
+    -- replaced with conform.nvim
     -- Enable "Format on Save" (optional)
     -- In lua/config/lsp.lua, inside your on_attach function
-    vim.api.nvim_create_autocmd("BufWritePre", {
-        group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
-        buffer = bufnr,
-        callback = function()
-            -- This 'if' check is key: it verifies the attached LSP client supports formatting
-            if client.supports_method("textDocument/formatting") then
-                vim.lsp.buf.format({ bufnr = bufnr })
-            end
-        end,
-    })
     -- vim.api.nvim_create_autocmd("BufWritePre", {
+    --     group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
     --     buffer = bufnr,
     --     callback = function()
+    --         -- This 'if' check is key: it verifies the attached LSP client supports formatting
     --         if client.supports_method("textDocument/formatting") then
-    --             vim.lsp.buf.format({ async = true })
+    --             vim.lsp.buf.format({ bufnr = bufnr })
     --         end
     --     end,
-    --     desc = "Format on save"
     -- })
 end
 
 local lspconfig = require('lspconfig')
-local default_servers = {'biome', 'rust_analyzer', 'gopls', 'html', 'tailwindcss', 'basedpyright', 'vimls', 'lua_ls', 'marksman', 'cssls', 'jsonls'}
-
--- Helper to find the monorepo root (independent of null-ls utils)
-local function find_monorepo_root(start_path)
-    -- `lspconfig.util.root_pattern` is a safe way to find roots provided by lspconfig itself.
-    local root = lspconfig.util.root_pattern(
-        "pnpm-workspace.yaml", ".git", "package.json"
-    )(start_path)
-    if root and vim.fn.isdirectory(root .. "/node_modules/.bin") then
-        return root
-    end
-    return nil
-end
+local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'tailwindcss', 'basedpyright', 'vimls', 'lua_ls',
+    'marksman', 'cssls', 'jsonls' }
 
 -- Setup LSP servers with on_attach
 for _, lsp in ipairs(default_servers) do
@@ -141,27 +102,6 @@ for _, lsp in ipairs(default_servers) do
         capabilities = capabilities,
         on_attach = on_attach, -- Attach common keymaps and autocommands
     }
-end
-
-lspconfig.ts_ls.setup {
-    on_attach = on_attach,
-    capabilities = capabilities,
-    root_dir = function(fname)
-        return find_monorepo_root(fname) or lspconfig.util.root_pattern("tsconfig.json", "package.json")(fname)
-    end,
-}
-
--- Helper to construct a pnpm exec command that CD's to the monorepo root
-local function pnpm_exec_cmd(server_binary_path, ...)
-    local current_file = vim.fn.expand('%:p')
-    local monorepo_root = find_monorepo_root(current_file) or vim.fn.getcwd()
-
-    local all_args = { "exec", server_binary_path, unpack({...}) }
-
-    local cmd_str = "cd " .. vim.fn.fnameescape(monorepo_root) .. " && " ..
-    "pnpm " .. table.concat(all_args, " ")
-
-    return { "bash", "-c", cmd_str }
 end
 
 -- Explicitly setup customized LSP servers with their specific configs

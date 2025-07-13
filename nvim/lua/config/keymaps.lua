@@ -9,7 +9,7 @@ local fzf = require("fzf-lua")
 -- files & buffers
 map('n', '<leader>ff', fzf.files, opts)
 map('n', '<leader>fb', fzf.buffers, opts)
-map('n', '<leader>fg', fzf.grep, opts)
+map('n', '<leader>fg', fzf.live_grep, opts)
 
 -- git
 map('n', '<leader>gf', fzf.git_files, opts)

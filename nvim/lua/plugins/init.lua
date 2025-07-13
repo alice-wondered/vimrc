@@ -23,6 +23,7 @@ return {
             require("fzf-lua").setup {
                 defaults = {
                     file_icons = "mini",
+                    formatter = "path.filename_first"
                 }
 
             }
@@ -67,6 +68,28 @@ return {
                 end,
             })
         end,
+    },
+    {
+        'stevearc/conform.nvim',
+        opts = {},
+        config = function()
+            require("conform").setup({
+                formatters_by_ft = {
+                    lua = { "stylua" },
+                    -- Conform will run multiple formatters sequentially
+                    python = { "isort", "black" },
+                    -- You can customize some of the format options for the filetype (:help conform.format)
+                    rust = { "rustfmt", lsp_format = "fallback" },
+                    go = { "goimports", "gofmt" },
+                    typescript = { "prettierd", "prettier", "biome" },
+                    javascript = { "prettierd", "prettier", "biome" },
+                },
+                format_on_save = {
+                    timeout_ms = 1000,
+                    lsp_format = "fallback",
+                }
+            })
+        end
     },
     {
         'MunifTanjim/prettier.nvim',
