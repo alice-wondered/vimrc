@@ -92,9 +92,63 @@ local on_attach = function(client, bufnr)
     -- })
 end
 
+local MiniDiff = require("mini.diff")
+local range_ignore_filetypes = { "lua" }
+local diff_format = function()
+    local data = MiniDiff.get_buf_data()
+    if not data or not data.hunks then
+        vim.notify("No hunks in this buffer")
+        return
+    end
+    local format = require("conform").format
+    -- stylua range format mass up indent, so use full format for now
+    if vim.tbl_contains(range_ignore_filetypes, vim.bo.filetype) then
+        format({ lsp_fallback = true, timeout_ms = 500 })
+        return
+    end
+    local ranges = {}
+    for _, hunk in pairs(data.hunks) do
+        if hunk.type ~= "delete" then
+            -- always insert to index 1 so format below could start from last hunk, which this sort didn't mess up range
+            table.insert(ranges, 1, {
+                start = { hunk.buf_start, 0 },
+                ["end"] = { hunk.buf_start + hunk.buf_count, 0 },
+            })
+        end
+    end
+    for _, range in pairs(ranges) do
+        format({ lsp_fallback = true, timeout_ms = 500, range = range })
+    end
+end
+
+local conform = require("conform")
+conform.setup({
+    formatters_by_ft = {
+        lua = { "stylua" },
+        -- Conform will run multiple formatters sequentially
+        python = { "isort", "black" },
+        -- You can customize some of the format options for the filetype (:help conform.format)
+        rust = { "rustfmt", lsp_format = "fallback" },
+        go = { "goimports", "gofmt" },
+        typescript = { "prettierd", "prettier", "biome" },
+        javascript = { "prettierd", "prettier", "biome" },
+    },
+    format_on_save = function()
+        diff_format()
+    end,
+    on_attach = function(client, bufnr)
+        on_attach(client, bufnr)
+        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
+    end,
+    capabilities = capabilities,
+})
+
 local lspconfig = require('lspconfig')
 local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'tailwindcss', 'basedpyright', 'vimls', 'lua_ls',
-    'marksman', 'cssls', 'jsonls' }
+    'marksman', 'cssls', 'jsonls', 'mdx_analyzer' }
+
+
 
 -- Setup LSP servers with on_attach
 for _, lsp in ipairs(default_servers) do
@@ -106,22 +160,62 @@ end
 
 -- Explicitly setup customized LSP servers with their specific configs
 -- 1. ts_ls (for TypeScript type-checking, completions, etc. - RENAMED FROM tsserver)
-lspconfig.ts_ls.setup {
-    root_markers = { '.git', 'tsconfig.json', 'jsconfig.json', 'package.json', },
+-- lspconfig.ts_ls.setup {
+--     root_markers = { '.git', 'tsconfig.json', 'jsconfig.json', 'package.json', },
+--     settings = {
+--         typescript = {
+--             format = { enabled = false },
+--         },
+--         javascript = {
+--             format = { enabled = false },
+--         },
+--     },
+--     on_attach = function(client, bufnr)
+--         on_attach(client, bufnr)
+--         client.server_capabilities.documentFormattingProvider = false
+--         client.server_capabilities.documentRangeFormattingProvider = false
+--     end,
+--     capabilities = capabilities,
+-- }
+
+
+lspconfig.vtsls.setup {
     settings = {
-        typescript = {
-            format = { enabled = false },
+        vtsls = {
+            autoUseWorkspaceTsdk = true,
+            experimental = {
+                completion = {
+                    enableServerSideFuzzyMatch = true,
+                    entriesLimit = 50,
+                },
+            },
         },
-        javascript = {
-            format = { enabled = false },
+        typescript = {
+            updateImportsOnFileMove = { enabled = "always" },
+            tsserver = {
+                maxTsServerMemory = 8192,
+                experimental = {
+                    enableProjectDiagnostics = true,
+                },
+            },
+            preferences = {
+                includePackageJsonAutoImports = "on",
+                includeCompletionsForModuleExports = true,
+                includeCompletionsForImportStatements = true,
+            },
         },
     },
     on_attach = function(client, bufnr)
         on_attach(client, bufnr)
-        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
         client.server_capabilities.documentRangeFormattingProvider = false
     end,
     capabilities = capabilities,
+    root_dir = require('lspconfig.util').root_pattern(
+      'package.json',
+      'tsconfig.json',
+      '.git'
+    ),
 }
 
 -- Tailwind-Tools integration for LSP completion kind
