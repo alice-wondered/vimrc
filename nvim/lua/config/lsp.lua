@@ -132,8 +132,16 @@ conform.setup({
         go = { "goimports", "gofmt" },
         typescript = { "prettierd", "prettier", "biome" },
         javascript = { "prettierd", "prettier", "biome" },
+        terraform = { "terraform_fmt" },
     },
-    format_on_save = function()
+    format_on_save = function(bufnr)
+        if vim.g.disable_autoformat then
+            return false
+        end
+        -- Check buffer-specific disable flag
+        if vim.b[bufnr].disable_autoformat then
+            return false
+        end
         diff_format()
     end,
     on_attach = function(client, bufnr)
@@ -146,7 +154,7 @@ conform.setup({
 
 local lspconfig = require('lspconfig')
 local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'tailwindcss', 'basedpyright', 'vimls', 'lua_ls',
-    'marksman', 'cssls', 'jsonls', 'mdx_analyzer' }
+    'marksman', 'cssls', 'jsonls', 'mdx_analyzer', 'terraformls' }
 
 
 

@@ -1,33 +1,4 @@
 local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
-
-local range_ignore_filetypes = { "lua" }
-local diff_format = function()
-    local data = MiniDiff.get_buf_data()
-    if not data or not data.hunks then
-        vim.notify("No hunks in this buffer")
-        return
-    end
-    local format = require("conform").format
-    -- stylua range format mass up indent, so use full format for now
-    if vim.tbl_contains(range_ignore_filetypes, vim.bo.filetype) then
-        format({ lsp_fallback = true, timeout_ms = 500 })
-        return
-    end
-    local ranges = {}
-    for _, hunk in pairs(data.hunks) do
-        if hunk.type ~= "delete" then
-            -- always insert to index 1 so format below could start from last hunk, which this sort didn't mess up range
-            table.insert(ranges, 1, {
-                start = { hunk.buf_start, 0 },
-                ["end"] = { hunk.buf_start + hunk.buf_count, 0 },
-            })
-        end
-    end
-    for _, range in pairs(ranges) do
-        format({ lsp_fallback = true, timeout_ms = 500, range = range })
-    end
-end
-
 return {
     'nvim-lua/plenary.nvim',
     {
@@ -209,6 +180,10 @@ return {
         end,
     },
     {
+        'HiPhish/rainbow-delimiters.nvim',
+        lazy = false,
+    },
+    {
         "davidmh/mdx.nvim",
         config = true,
         dependencies = {"nvim-treesitter/nvim-treesitter"}
@@ -359,12 +334,6 @@ return {
     {
         "folke/trouble.nvim",
         opts = {
-            icons = true,
-            modes = {
-                diagnostics = {
-                    severity = vim.diagnostic.severity.WARNING,
-                },
-            },
         }, -- for default options, refer to the configuration section for custom setup.
         cmd = "Trouble",
         keys = {

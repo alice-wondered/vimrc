@@ -69,3 +69,30 @@ map("i", "<C-h>", "<Left>", opts)
 map("i", "<C-l>", "<Right>", opts)
 map("i", "<C-j>", "<Down>", opts)
 map("i", "<C-k>", "<Up>", opts)
+
+-- Toggle functions
+vim.api.nvim_create_user_command("FormatDisable", function(args)
+  if args.bang then
+    -- FormatDisable! - disable globally
+    vim.g.disable_autoformat = true
+  else
+    -- FormatDisable - disable for current buffer
+    vim.b.disable_autoformat = true
+  end
+end, {
+  desc = "Disable autoformat-on-save",
+  bang = true,
+})
+
+vim.api.nvim_create_user_command("FormatEnable", function()
+  vim.b.disable_autoformat = false
+  vim.g.disable_autoformat = false
+end, {
+  desc = "Re-enable autoformat-on-save",
+})
+
+-- Keymaps (optional)
+vim.keymap.set("n", "<leader>tf", function()
+  vim.g.disable_autoformat = not vim.g.disable_autoformat
+  print("Format on save:", vim.g.disable_autoformat and "disabled" or "enabled")
+end, { desc = "Toggle format on save" })
