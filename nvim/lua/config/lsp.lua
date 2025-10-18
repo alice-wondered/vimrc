@@ -3,23 +3,6 @@ local vim = vim
 -- Installing LSPs with Mason
 require("mason").setup()
 
-local cap = require("cmp_nvim_lsp").default_capabilities()
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-for k, v in pairs(cap) do
-    capabilities[k] = v
-end
-
-capabilities.textDocument.codeAction = {
-    dynamicRegistration = true,
-    codeActionLiteralSupport = {
-        codeActionKind = {
-            valueSet = {
-                "",
-            },
-        },
-    },
-}
-
 -- Keymaps for LSP actions
 local on_attach = function(client, bufnr)
     -- Enable completion (already handled by nvim-cmp but good to be explicit)
@@ -76,20 +59,6 @@ local on_attach = function(client, bufnr)
             desc = "Clear References"
         })
     end
-
-    -- replaced with conform.nvim
-    -- Enable "Format on Save" (optional)
-    -- In lua/config/lsp.lua, inside your on_attach function
-    -- vim.api.nvim_create_autocmd("BufWritePre", {
-    --     group = vim.api.nvim_create_augroup("LspFormatOnSave", { clear = true }),
-    --     buffer = bufnr,
-    --     callback = function()
-    --         -- This 'if' check is key: it verifies the attached LSP client supports formatting
-    --         if client.supports_method("textDocument/formatting") then
-    --             vim.lsp.buf.format({ bufnr = bufnr })
-    --         end
-    --     end,
-    -- })
 end
 
 local MiniDiff = require("mini.diff")
@@ -129,8 +98,9 @@ conform.setup({
         python = { "isort", "black" },
         -- You can customize some of the format options for the filetype (:help conform.format)
         rust = { "rustfmt", lsp_format = "fallback" },
-        go = { "goimports", "gofmt" },
+        go = { "goimports", "gofmt", lsp_format = "fallback" },
         typescript = { "prettierd", "prettier", "biome" },
+        typescriptreact = { "prettierd", "prettier", "biome" },
         javascript = { "prettierd", "prettier", "biome" },
         terraform = { "terraform_fmt" },
     },
@@ -152,42 +122,10 @@ conform.setup({
     capabilities = capabilities,
 })
 
-local lspconfig = require('lspconfig')
-local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'tailwindcss', 'basedpyright', 'vimls', 'lua_ls',
-    'marksman', 'cssls', 'jsonls', 'mdx_analyzer', 'terraformls' }
+local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'basedpyright', 'vimls', 'lua_ls',
+    'marksman', 'jsonls', 'mdx_analyzer', 'terraformls', 'vtsls', 'tailwindcss' }
 
-
-
--- Setup LSP servers with on_attach
-for _, lsp in ipairs(default_servers) do
-    lspconfig[lsp].setup {
-        capabilities = capabilities,
-        on_attach = on_attach, -- Attach common keymaps and autocommands
-    }
-end
-
--- Explicitly setup customized LSP servers with their specific configs
--- 1. ts_ls (for TypeScript type-checking, completions, etc. - RENAMED FROM tsserver)
--- lspconfig.ts_ls.setup {
---     root_markers = { '.git', 'tsconfig.json', 'jsconfig.json', 'package.json', },
---     settings = {
---         typescript = {
---             format = { enabled = false },
---         },
---         javascript = {
---             format = { enabled = false },
---         },
---     },
---     on_attach = function(client, bufnr)
---         on_attach(client, bufnr)
---         client.server_capabilities.documentFormattingProvider = false
---         client.server_capabilities.documentRangeFormattingProvider = false
---     end,
---     capabilities = capabilities,
--- }
-
-
-lspconfig.vtsls.setup {
+vim.lsp.config('vtsls', {
     settings = {
         vtsls = {
             autoUseWorkspaceTsdk = true,
@@ -213,21 +151,23 @@ lspconfig.vtsls.setup {
             },
         },
     },
-    on_attach = function(client, bufnr)
-        on_attach(client, bufnr)
-        client.server_capabilities.documentRangeFormattingProvider = false
-        client.server_capabilities.documentRangeFormattingProvider = false
-    end,
-    capabilities = capabilities,
-    root_dir = require('lspconfig.util').root_pattern(
-      'package.json',
-      'tsconfig.json',
-      '.git'
-    ),
-}
+})
 
--- Tailwind-Tools integration for LSP completion kind
-require("tailwind-tools").setup({})
+
+-- Setup LSP servers with defaults from lspconfig
+for _, lsp in ipairs(default_servers) do
+    vim.lsp.enable(lsp)
+end
+
+-- Attach common keymaps and other settings 
+vim.api.nvim_create_autocmd("LspAttach", {
+    group = vim.api.nvim_create_augroup("my.lsp", {}),
+    callback = function(args)
+        local client = vim.lsp.get_client_by_id(args.data.client_id)
+        local bufnr = args.buf
+        on_attach(client, bufnr)
+    end,
+})
 
 vim.diagnostic.config({
     virtual_text = { severity = { min = vim.diagnostic.severity.ERROR } },

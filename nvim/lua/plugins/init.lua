@@ -14,6 +14,7 @@ return {
             require('mini.icons').setup()
             require('mini.git').setup()
             require('mini.diff').setup()
+            require('mini.completion').setup()
         end,
     },
     'onsails/lspkind.nvim', -- For nvim-cmp icons
@@ -39,66 +40,11 @@ return {
     -- Autocomplete (nvim-cmp and LSP setup)
     'neovim/nvim-lspconfig',
     'williamboman/mason.nvim',
-    'hrsh7th/cmp-nvim-lsp',
-    'hrsh7th/cmp-buffer',
-    'hrsh7th/cmp-path',
-    'hrsh7th/cmp-cmdline',
-    --- we specifically use this for prettier right now, everything else is LSP based
-    {
-        'nvimtools/none-ls.nvim',
-        dependencies = { 'nvim-lua/plenary.nvim' },
-        config = function()
-            local null_ls = require('null-ls')
-            null_ls.setup({
-                on_attach = function(client, bufnr)
-                    if client.supports_method('textDocument/formatting') then
-                        vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
-                        vim.api.nvim_create_autocmd('BufWritePre', {
-                            group = augroup,
-                            buffer = bufnr,
-                            callback = function()
-                                vim.lsp.buf.format({
-                                    async = false,
-                                    bufnr = bufnr,
-                                    filter = function(client)
-                                        return client.name == 'null-ls'
-                                    end
-                                })
-                            end,
-                        })
-                    end
-                end,
-            })
-        end,
-    },
     {
         'stevearc/conform.nvim',
         opts = {},
         config = function()
         end
-    },
-    {
-        'MunifTanjim/prettier.nvim',
-        dependencies = { 'neovim/nvim-lspconfig', 'nvimtools/none-ls.nvim' },
-        config = function()
-            local prettier = require("prettier")
-            prettier.setup({
-                ["null-ls"] = {
-                    condition = function()
-                        return prettier.config_exists({
-                            -- if `false`, skips checking `package.json` for `"prettier"` key
-                            check_package_json = true,
-                        })
-                    end,
-                    runtime_condition = function(params)
-                        -- return false to skip running prettier
-                        return true
-                    end,
-                    timeout = 5000,
-                }
-            })
-        end,
-
     },
     -- Treesitter
     {
@@ -250,85 +196,6 @@ return {
         'supermaven-inc/supermaven-nvim',
         config = function()
             require("supermaven-nvim").setup({})
-        end,
-    },
-    -- CMP plugin for autocompletion
-    {
-        'hrsh7th/nvim-cmp',
-        dependencies = {
-            'hrsh7th/cmp-nvim-lsp',
-            'hrsh7th/cmp-buffer',
-            'hrsh7th/cmp-path',
-            'hrsh7th/cmp-cmdline',
-            -- mini.snippet acts as luasnip source
-            'echasnovski/mini.nvim', -- Ensure mini.nvim is loaded for mini.snippet
-            'supermaven-inc/supermaven-nvim',
-        },
-        config = function()
-            local cmp = require('cmp')
-            local lspkind = require('lspkind')
-            cmp.setup({
-                sources = cmp.config.sources({
-                    { name = 'supermaven' },
-                    { name = 'nvim_lsp' },
-                    { name = 'luasnip' },
-                    { name = 'buffer' },
-                    { name = 'path' },
-                }),
-                mapping = {
-                    ['<CR>'] = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
-                    ["<Tab>"] = function(fallback)
-                        if cmp.visible() then
-                            cmp.select_next_item({ behavior = 'insert' })
-                        else
-                            fallback()
-                        end
-                    end,
-                    ["<S-Tab>"] = function(fallback)
-                        if cmp.visible() then
-                            cmp.select_prev_item({ behavior = 'insert' })
-                        else
-                            fallback()
-                        end
-                    end,
-                    ['<C-e>'] = cmp.mapping.abort(),
-                    ['<C-p>'] = cmp.mapping(function()
-                        if cmp.visible() then
-                            cmp.select_prev_item({ behavior = 'insert' })
-                        else
-                            cmp.complete()
-                        end
-                    end),
-                    ['<C-n>'] = cmp.mapping(function()
-                        if cmp.visible() then
-                            cmp.select_next_item({ behavior = 'insert' })
-                        else
-                            cmp.complete()
-                        end
-                    end),
-                },
-                -- snippet = {
-                --     expand = function(args)
-                --         -- mini.snippet integrates with the luasnip API
-                --         require('luasnip').lsp_expand(args.body)
-                --     end,
-                -- },
-                completion = { completeopt = "noselect" },
-                preselect = cmp.PreselectMode.None,
-                formatting = {
-                    format = lspkind.cmp_format({
-                        before = require("tailwind-tools.cmp").lspkind_format,
-                        mode = 'symbol',
-                        symbol_map = { Supermaven = "" },
-                        maxwidth = 50,
-                        ellipsis_char = '...',
-                        show_labelDetails = true,
-                        before = function(entry, vim_item)
-                            return vim_item
-                        end
-                    })
-                },
-            })
         end,
     },
     {
