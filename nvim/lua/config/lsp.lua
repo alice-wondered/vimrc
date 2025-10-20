@@ -123,7 +123,42 @@ conform.setup({
 })
 
 local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'basedpyright', 'vimls', 'lua_ls',
-    'marksman', 'jsonls', 'mdx_analyzer', 'terraformls', 'vtsls', 'tailwindcss' }
+    'marksman', 'jsonls', 'mdx_analyzer', 'terraformls', 'vtsls', 'tsgo', 'tailwindcss' }
+
+vim.lsp.config('tsgo', {
+    cmd = { 'tsgo', '--lsp', '--stdio' },
+    filetypes = {
+        'javascript',
+        'javascriptreact',
+        'typescript',
+        'typescriptreact',
+        'javascript.jsx',
+        'typescript.tsx',
+    },
+    root_markers = {
+        '.git',
+        'tsconfig.json',
+        'package.json',
+        'tsconfig.base.json',
+    },
+    -- this probably doesn't work but it's worth a shot 
+    settings = {
+        typescript = {
+            updateImportsOnFileMove = { enabled = "always" },
+            tsserver = {
+                maxTsServerMemory = 8192,
+                experimental = {
+                    enableProjectDiagnostics = true,
+                },
+            },
+            preferences = {
+                includePackageJsonAutoImports = "on",
+                includeCompletionsForModuleExports = true,
+                includeCompletionsForImportStatements = true,
+            },
+        },
+    },
+})
 
 vim.lsp.config('vtsls', {
     settings = {

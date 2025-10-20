@@ -46,6 +46,7 @@ return {
         config = function()
         end
     },
+    { 'dmmulroy/ts-error-translator.nvim' },
     -- Treesitter
     {
         'nvim-treesitter/nvim-treesitter',
