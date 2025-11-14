@@ -20,3 +20,4 @@ require('mini.snippets').setup({ -- Replaces LuaSnip and friendly-snippets
     -- Otherwise, define simple snippets directly here.
 })
 require('mini.completion').setup({})
+require('mini.files').setup()

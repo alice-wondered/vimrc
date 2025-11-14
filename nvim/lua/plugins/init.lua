@@ -15,6 +15,7 @@ return {
             require('mini.git').setup()
             require('mini.diff').setup()
             require('mini.completion').setup()
+            require('mini.files').setup()
         end,
     },
     'onsails/lspkind.nvim', -- For nvim-cmp icons
@@ -39,6 +40,11 @@ return {
     },
     -- Autocomplete (nvim-cmp and LSP setup)
     'neovim/nvim-lspconfig',
+    {
+        "pmizio/typescript-tools.nvim",
+        dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
+        opts = {},
+    },
     'williamboman/mason.nvim',
     {
         'stevearc/conform.nvim',

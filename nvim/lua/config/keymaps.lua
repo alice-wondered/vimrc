@@ -96,3 +96,15 @@ vim.keymap.set("n", "<leader>tf", function()
   vim.g.disable_autoformat = not vim.g.disable_autoformat
   print("Format on save:", vim.g.disable_autoformat and "disabled" or "enabled")
 end, { desc = "Toggle format on save" })
+
+-- Toggle mini.files on the current file's directory
+local mf = require("mini.files")
+
+vim.keymap.set("n", "<leader>fe", function()
+  if not mf.close() then
+    local name = vim.api.nvim_buf_get_name(0)
+    local path = (name == "" and vim.loop.cwd()) or vim.fn.fnamemodify(name, ":p:h")
+    mf.open(path, false)
+  end
+end, { desc = "MiniFiles toggle (buffer dir or CWD)" })
+
