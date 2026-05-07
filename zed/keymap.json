@@ -1,0 +1,188 @@
+// Zed keymap — emulates the user's neovim setup (space leader, fzf-lua, harpoon-style flow)
+//
+// Notes:
+// - Action names occasionally drift between Zed versions. If a chord doesn't
+//   fire, open the command palette (cmd-shift-p), type the verb, and copy the
+//   exact action ID into this file.
+// - `space`-leader chords are duplicated across panel contexts so fuzzy-find,
+//   git, etc. work without first jumping back to the editor.
+// - Harpoon has no native equivalent; closest is `space f b` (tab switcher)
+//   plus `tab` / `shift-tab` for next/prev buffer.
+[
+  // ============================================================
+  // Editor — vim normal mode (primary leader bindings)
+  // ============================================================
+  {
+    "context": "Editor && vim_mode == normal",
+    "bindings": {
+      // Pane navigation (mirrors <C-h/j/k/l> in nvim)
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-j": "workspace::ActivatePaneDown",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-l": "workspace::ActivatePaneRight",
+
+      // Buffer next/prev. `tab` works inside the editor; `shift-h` /
+      // `shift-l` work everywhere (panels, search results, etc.) without
+      // colliding with panel-internal `tab` nav.
+      "tab": "pane::ActivateNextItem",
+      "shift-tab": "pane::ActivatePreviousItem",
+      "shift-l": "pane::ActivateNextItem",
+      "shift-h": "pane::ActivatePreviousItem",
+
+      // Files / search / buffers (<leader>f*)
+      "space f f": "file_finder::Toggle",
+      "space f g": "workspace::NewSearch",
+      "space f b": "tab_switcher::Toggle",
+      "space f e": "project_panel::ToggleFocus",   // mini.files toggle
+      "space f d": "git::Diff",                    // working-tree diff multibuffer
+
+      // Symbols (<leader>s*)
+      "space s s": "outline::Toggle",
+      "space s w": "project_symbols::Toggle",
+
+      // Goto / git (<leader>g*)
+      "space g d": "editor::GoToDefinition",
+      "space g r": "editor::FindAllReferences",
+      "space g s": "git_panel::ToggleFocus",
+      "space g h": "git::Diff",
+      "space g b": "editor::ToggleGitBlame",
+      "space g f": "file_finder::Toggle",
+
+      // Misc workspace (replaces cmd-shortcuts)
+      "space p": "command_palette::Toggle",
+      "space e": "project_panel::ToggleFocus",
+      "space t": "terminal_panel::ToggleFocus",
+      "space d": "diagnostics::Deploy",
+
+      // Save / close (<leader>w / <leader>q / <leader>Q)
+      "space w": "workspace::Save",
+      "space q": "pane::CloseActiveItem",
+      "space shift-q": "pane::CloseAllItems"
+    }
+  },
+
+  // ============================================================
+  // Editor — vim insert mode (just arrow-key shortcuts)
+  // ============================================================
+  {
+    "context": "Editor && vim_mode == insert",
+    "bindings": {
+      "ctrl-h": "vim::Left",
+      "ctrl-j": "vim::Down",
+      "ctrl-k": "vim::Up",
+      "ctrl-l": "vim::Right"
+    }
+  },
+
+  // ============================================================
+  // Workspace-wide pane navigation (works from terminal too,
+  // unless the panel context overrides ctrl-h)
+  // ============================================================
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-shift-h": "workspace::ActivatePaneLeft",
+      "ctrl-shift-j": "workspace::ActivatePaneDown",
+      "ctrl-shift-k": "workspace::ActivatePaneUp",
+      "ctrl-shift-l": "workspace::ActivatePaneRight",
+
+      // Universal "toggle / cycle to next pane" — works from anywhere.
+      // With 2 panes it acts as a true toggle; with N>2 it cycles forward.
+      "ctrl-;": "workspace::ActivateNextPane",
+      "ctrl-shift-;": "workspace::ActivatePreviousPane"
+    }
+  },
+
+  // ============================================================
+  // Terminal — escape hatches so you can leave without the mouse.
+  // `escape` and most modifiers are literal input in terminal, so
+  // we use explicit shift-modifier chords + `ctrl-;` for unfocus.
+  // ============================================================
+  {
+    "context": "Terminal",
+    "bindings": {
+      "ctrl-shift-h": "workspace::ActivatePaneLeft",
+      "ctrl-shift-j": "workspace::ActivatePaneDown",
+      "ctrl-shift-k": "workspace::ActivatePaneUp",
+      "ctrl-shift-l": "workspace::ActivatePaneRight",
+
+      // Single-key escape from terminal to whatever pane was last focused
+      "ctrl-;": "terminal_panel::ToggleFocus",
+
+      // Buffer next/prev still works from terminal
+      "ctrl-shift-]": "pane::ActivateNextItem",
+      "ctrl-shift-[": "pane::ActivatePreviousItem"
+    }
+  },
+
+  // ============================================================
+  // Search bars — only override escape where Zed's default does the
+  // wrong thing. The buffer find bar is the one common pain point.
+  // Other inputs (project search, rename popups, picker popups) keep
+  // Zed's defaults so we don't accidentally clobber dismiss behavior.
+  // ============================================================
+  {
+    "context": "BufferSearchBar > Editor",
+    "bindings": {
+      "escape": "buffer_search::Dismiss"
+    }
+  },
+
+  // ============================================================
+  // Picker popups — vim-style navigation inside any fuzzy picker
+  // (file finder, tab switcher, command palette, symbol pickers,
+  // project search results, etc.)
+  //
+  // ctrl-j/k, ctrl-n/p instead of plain j/k so the search input
+  // can still receive those letters.
+  // ============================================================
+  {
+    "context": "Picker || menu",
+    "bindings": {
+      "ctrl-j": "menu::SelectNext",
+      "ctrl-k": "menu::SelectPrevious",
+      "ctrl-n": "menu::SelectNext",
+      "ctrl-p": "menu::SelectPrevious",
+      "ctrl-g g": "menu::SelectFirst",
+      "shift-g": "menu::SelectLast"
+    }
+  },
+
+  // ============================================================
+  // Panel contexts — replicate the leader chords so fuzzy-find,
+  // git, etc. work without jumping back to the editor first.
+  // Excludes Terminal (space is literal input).
+  // ============================================================
+  {
+    "context": "ProjectPanel || GitPanel || OutlinePanel || CollabPanel || NotificationPanel || AssistantPanel || ChatPanel",
+    "bindings": {
+      "space f f": "file_finder::Toggle",
+      "space f g": "workspace::NewSearch",
+      "space f b": "tab_switcher::Toggle",
+      "space f e": "project_panel::ToggleFocus",
+      "space f d": "git::Diff",
+
+      "space s s": "outline::Toggle",
+      "space s w": "project_symbols::Toggle",
+
+      "space g s": "git_panel::ToggleFocus",
+      "space g h": "git::Diff",
+      "space g f": "file_finder::Toggle",
+
+      "space p": "command_palette::Toggle",
+      "space e": "project_panel::ToggleFocus",
+      "space t": "terminal_panel::ToggleFocus",
+      "space d": "diagnostics::Deploy",
+
+      // Buffer next/prev — works from inside any panel.
+      // (Plain `tab` is reserved by Zed for panel-internal nav.)
+      "shift-l": "pane::ActivateNextItem",
+      "shift-h": "pane::ActivatePreviousItem",
+
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-j": "workspace::ActivatePaneDown",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-l": "workspace::ActivatePaneRight"
+    }
+  }
+]
