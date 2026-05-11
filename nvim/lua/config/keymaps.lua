@@ -11,6 +11,166 @@ map('n', '<leader>ff', fzf.files, opts)
 map('n', '<leader>fb', fzf.buffers, opts)
 map('n', '<leader>fg', fzf.live_grep, opts)
 
+local function git(args)
+  local out = vim.fn.systemlist('git ' .. args)
+  if vim.v.shell_error ~= 0 then
+    return nil
+  end
+  return out
+end
+
+local function git_root()
+  local out = git('rev-parse --show-toplevel')
+  if not out or not out[1] then
+    return nil
+  end
+  return out[1]
+end
+
+local function resolve_diff_base()
+  local candidates = {
+    vim.g.branch_diff_base,
+    'origin/main',
+    'origin/master',
+    'main',
+    'master',
+  }
+
+  for _, ref in ipairs(candidates) do
+    if ref and ref ~= '' then
+      local ok = git('rev-parse --verify --quiet ' .. vim.fn.shellescape(ref))
+      if ok then
+        return ref
+      end
+    end
+  end
+
+  return 'main'
+end
+
+vim.g.branch_diff_base = vim.g.branch_diff_base or resolve_diff_base()
+
+local function set_diff_base(ref)
+  if not ref or ref == '' then
+    return
+  end
+  local ok = git('rev-parse --verify --quiet ' .. vim.fn.shellescape(ref))
+  if not ok then
+    vim.notify(('Invalid git ref: %s'):format(ref), vim.log.levels.WARN)
+    return
+  end
+  vim.g.branch_diff_base = ref
+  vim.notify(('Branch diff base set to %s'):format(ref), vim.log.levels.INFO)
+end
+
+local function pick_diff_base()
+  local items = {}
+  local branches = git("for-each-ref --format='%(refname:short)' refs/heads refs/remotes") or {}
+  local commits = git('log --oneline --no-decorate -n 40') or {}
+
+  for _, ref in ipairs(branches) do
+    items[#items + 1] = ('%s\tbranch\t%s'):format(ref, ref)
+  end
+
+  for _, line in ipairs(commits) do
+    local sha, msg = line:match('^(%S+)%s+(.+)$')
+    if sha and msg then
+      items[#items + 1] = ('%s\tcommit\t%s'):format(sha, msg)
+    end
+  end
+
+  fzf.fzf_exec(items, {
+    prompt = 'diff-base> ',
+    fzf_opts = {
+      ['--delimiter'] = '\t',
+      ['--with-nth'] = '2..',
+      ['--tiebreak'] = 'index',
+    },
+    actions = {
+      ['default'] = function(selected)
+        if not selected or not selected[1] then
+          return
+        end
+        local ref = selected[1]:match('^([^\t]+)')
+        set_diff_base(ref)
+      end,
+    },
+  })
+end
+
+local function open_branch_diff_files(include_branch_changes)
+  local root = git_root()
+  if not root then
+    return false
+  end
+
+  local base = vim.g.branch_diff_base or resolve_diff_base()
+  local changed = {}
+  if include_branch_changes then
+    changed = git('diff --name-only --diff-filter=ACMR ' .. vim.fn.shellescape(base) .. '...HEAD') or {}
+  end
+  local status = git('status --porcelain=1') or {}
+  local seen = {}
+  local items = {}
+
+  for _, path in ipairs(changed) do
+    if path ~= '' and not seen[path] then
+      seen[path] = true
+      items[#items + 1] = path
+    end
+  end
+
+  for _, line in ipairs(status) do
+    local path = line:sub(4)
+    if path:find(' -> ', 1, true) then
+      path = path:match(' -> (.+)$') or path
+    end
+
+    if path ~= '' and not seen[path] then
+      seen[path] = true
+      items[#items + 1] = path
+    end
+  end
+
+  if #items == 0 then
+    return false
+  end
+
+  fzf.fzf_exec(items, {
+    cwd = root,
+    prompt = include_branch_changes and ('branch+work(%s)> '):format(base) or 'working> ',
+    previewer = 'builtin',
+    fzf_opts = {
+      ['--tiebreak'] = 'index',
+    },
+    actions = {
+      ['default'] = function(selected)
+        if not selected or not selected[1] then
+          return
+        end
+        local path = selected[1]:match('^([^\t]+)')
+        vim.cmd('edit ' .. vim.fn.fnameescape(root .. '/' .. path))
+      end,
+      ['ctrl-v'] = function(selected)
+        if not selected or not selected[1] then
+          return
+        end
+        local path = selected[1]:match('^([^\t]+)')
+        vim.cmd('vsplit ' .. vim.fn.fnameescape(root .. '/' .. path))
+      end,
+      ['ctrl-s'] = function(selected)
+        if not selected or not selected[1] then
+          return
+        end
+        local path = selected[1]:match('^([^\t]+)')
+        vim.cmd('split ' .. vim.fn.fnameescape(root .. '/' .. path))
+      end,
+    },
+  })
+
+  return true
+end
+
 -- git
 map('n', '<leader>gf', fzf.git_files, opts)
 map('n', '<leader>gc', fzf.git_commits, opts)
@@ -100,11 +260,45 @@ end, { desc = "Toggle format on save" })
 -- Toggle mini.files on the current file's directory
 local mf = require("mini.files")
 
-vim.keymap.set("n", "<leader>fe", function()
+local function toggle_mini_files()
   if not mf.close() then
     local name = vim.api.nvim_buf_get_name(0)
     local path = (name == "" and vim.loop.cwd()) or vim.fn.fnamemodify(name, ":p:h")
     mf.open(path, false)
   end
+end
+
+vim.keymap.set("n", "<leader>fe", function()
+  toggle_mini_files()
 end, { desc = "MiniFiles toggle (buffer dir or CWD)" })
 
+vim.keymap.set("n", "<leader>fE", function()
+  if not open_branch_diff_files(false) then
+    vim.notify("No changed files found in working tree", vim.log.levels.INFO)
+  end
+end, { desc = "Working tree changed files" })
+
+vim.keymap.set("n", "<leader>fD", function()
+  if not open_branch_diff_files(true) then
+    vim.notify("No changed files found vs diff base", vim.log.levels.INFO)
+  end
+end, { desc = "Branch diff files vs base" })
+
+vim.keymap.set('n', '<leader>fB', pick_diff_base, { desc = 'Pick branch diff base' })
+
+vim.api.nvim_create_user_command('BranchDiffBase', function(args)
+  set_diff_base(args.args)
+end, {
+  nargs = 1,
+  desc = 'Set branch diff base git ref',
+})
+
+vim.api.nvim_create_user_command('BranchDiffPickBase', pick_diff_base, {
+  desc = 'Pick branch diff base ref',
+})
+
+vim.api.nvim_create_user_command('BranchDiffFiles', function()
+  open_branch_diff_files(true)
+end, {
+  desc = 'Open files changed against branch diff base',
+})

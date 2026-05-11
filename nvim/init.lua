@@ -29,3 +29,4 @@ require("lazy").setup("plugins", {
 require("config.options")
 require("config.keymaps")
 require("config.lsp")
+require("config.git_change_agent").setup()

@@ -13,7 +13,12 @@ return {
             require('mini.snippets').setup()
             require('mini.icons').setup()
             require('mini.git').setup()
-            require('mini.diff').setup()
+            local branch_diff = require('config.branch_diff')
+            require('mini.diff').setup({
+                source = branch_diff.source(),
+                view = { priority = 100 },
+            })
+            branch_diff.setup()
             require('mini.completion').setup()
             require('mini.files').setup()
         end,
@@ -38,13 +43,28 @@ return {
         branch = "harpoon2",
         dependencies = { "nvim-lua/plenary.nvim" },
     },
+    {
+        "alice-wondered/claude-bridge",
+        dependencies = { "ibhagwan/fzf-lua" },
+        config = function()
+            local cb = require("claude-bridge")
+            cb.setup()
+            local opts = { noremap = true, silent = true }
+            vim.keymap.set("n", "<leader>Ca", cb.open_agent_files, vim.tbl_extend("force", opts, { desc = "Agent-touched files" }))
+            vim.keymap.set("n", "<leader>Cd", cb.open_unified_diff, vim.tbl_extend("force", opts, { desc = "Unified diff view" }))
+            vim.keymap.set("n", "<leader>Cr", cb.cycle_diff_ref, vim.tbl_extend("force", opts, { desc = "Cycle diff ref" }))
+            vim.keymap.set("n", "<leader>Cf", cb.open_focus_list, vim.tbl_extend("force", opts, { desc = "Focus list" }))
+            vim.keymap.set("n", "<leader>CA", cb.add_current_to_focus, vim.tbl_extend("force", opts, { desc = "Add to focus" }))
+            vim.keymap.set("n", "<leader>CF", cb.sync_focus_from_harpoon, vim.tbl_extend("force", opts, { desc = "Sync harpoon to focus" }))
+        end,
+    },
     -- Autocomplete (nvim-cmp and LSP setup)
     'neovim/nvim-lspconfig',
-    {
-        "pmizio/typescript-tools.nvim",
-        dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
-        opts = {},
-    },
+    -- {
+    --     "pmizio/typescript-tools.nvim",
+    --     dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
+    --     opts = {},
+    -- },
     'williamboman/mason.nvim',
     {
         'stevearc/conform.nvim',
@@ -138,6 +158,8 @@ return {
     },
     {
         "davidmh/mdx.nvim",
+        config = function()
+        end,
         config = true,
         dependencies = {"nvim-treesitter/nvim-treesitter"}
     },
