@@ -50,14 +50,13 @@ return {
             local cb = require("claude-bridge")
             cb.setup()
             local opts = { noremap = true, silent = true }
-            vim.keymap.set("n", "<leader>Ca", cb.open_agent_files, vim.tbl_extend("force", opts, { desc = "Agent-touched files" }))
-            vim.keymap.set("n", "<leader>Cd", cb.open_unified_diff, vim.tbl_extend("force", opts, { desc = "Unified diff view" }))
-            vim.keymap.set("n", "<leader>Cr", cb.cycle_diff_ref, vim.tbl_extend("force", opts, { desc = "Cycle diff ref" }))
-            vim.keymap.set("n", "<leader>Cf", cb.open_focus_buffer, vim.tbl_extend("force", opts, { desc = "Focus list" }))
-            vim.keymap.set("n", "<leader>Cg", cb.open_agent_focus_buffer, vim.tbl_extend("force", opts, { desc = "Agent focus" }))
-            vim.keymap.set("n", "<leader>CA", cb.add_current_to_focus, vim.tbl_extend("force", opts, { desc = "Add to focus" }))
-            vim.keymap.set("v", "<leader>CA", cb.add_visual_to_focus, vim.tbl_extend("force", opts, { desc = "Add selection to focus" }))
-            vim.keymap.set("n", "<leader>CF", cb.sync_focus_from_harpoon, vim.tbl_extend("force", opts, { desc = "Sync harpoon to focus" }))
+            vim.keymap.set("n", "<leader>af", cb.open_focus_buffer, vim.tbl_extend("force", opts, { desc = "Focus list" }))
+            vim.keymap.set("n", "<leader>aa", cb.open_agent_focus_buffer, vim.tbl_extend("force", opts, { desc = "Agent focus" }))
+            vim.keymap.set("n", "<leader>ad", cb.open_unified_diff, vim.tbl_extend("force", opts, { desc = "Unified diff" }))
+            vim.keymap.set("n", "<leader>ar", cb.cycle_diff_ref, vim.tbl_extend("force", opts, { desc = "Cycle diff ref" }))
+            vim.keymap.set("n", "<leader>at", cb.open_agent_files, vim.tbl_extend("force", opts, { desc = "Agent-touched files" }))
+            vim.keymap.set("n", "<leader>ac", cb.add_current_to_focus, vim.tbl_extend("force", opts, { desc = "Add to focus" }))
+            vim.keymap.set("v", "<leader>ac", cb.add_visual_to_focus, vim.tbl_extend("force", opts, { desc = "Add selection to focus" }))
         end,
     },
     -- Autocomplete (nvim-cmp and LSP setup)
