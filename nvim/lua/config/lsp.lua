@@ -174,7 +174,7 @@ vim.lsp.config('vtsls', {
         typescript = {
             updateImportsOnFileMove = { enabled = "always" },
             tsserver = {
-                maxTsServerMemory = 16384,
+                maxTsServerMemory = 8192,
                 experimental = {
                     enableProjectDiagnostics = true,
                 },

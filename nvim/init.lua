@@ -24,9 +24,11 @@ require("lazy").setup("plugins", {
         enabled = true,
         notify = false, -- Disable notification for plugin changes
     },
+    git = {
+        url_format = "git@github.com:%s.git",
+    },
 })
 
 require("config.options")
 require("config.keymaps")
 require("config.lsp")
-require("config.git_change_agent").setup()
