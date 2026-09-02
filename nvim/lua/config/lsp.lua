@@ -123,7 +123,7 @@ conform.setup({
 })
 
 local default_servers = { 'biome', 'rust_analyzer', 'gopls', 'html', 'basedpyright', 'vimls', 'lua_ls',
-    'marksman', 'jsonls', 'terraformls', 'tailwindcss', 'vtsls', 'tsgo' }
+    'marksman', 'jsonls', 'terraformls', 'tailwindcss', 'tsgo' }
 
 vim.lsp.config('tsgo', {
     cmd = { 'tsgo', '--lsp', '--stdio' },
