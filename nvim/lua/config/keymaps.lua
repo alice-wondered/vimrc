@@ -19,15 +19,42 @@ local function git(args)
   return out
 end
 
-local function git_root()
-  local out = git('rev-parse --show-toplevel')
-  if not out or not out[1] then
-    return nil
-  end
-  return out[1]
+local function jj_run(args, root)
+  local cmd = { 'jj' }
+  for _, a in ipairs(args) do cmd[#cmd + 1] = a end
+  local obj = vim.system(cmd, { cwd = root, text = true }):wait()
+  if obj.code ~= 0 then return nil end
+  return obj.stdout
 end
 
-local function resolve_diff_base()
+local function jj_lines(args, root)
+  local out = jj_run(args, root)
+  if not out then return nil end
+  local lines = {}
+  for line in out:gmatch('([^\n]*)\n?') do
+    if line ~= '' then lines[#lines + 1] = line end
+  end
+  return lines
+end
+
+-- root_info resolves for git, colocated git+jj, and bare jj workspaces (no
+-- .git). git first — colocated repos answer to both, so behavior there is
+-- unchanged; jj is the fallback for a workspace git can't see at all.
+local function root_info()
+  local out = git('rev-parse --show-toplevel')
+  if out and out[1] then
+    return { root = out[1], kind = 'git' }
+  end
+  local jj_out = vim.fn.systemlist('jj root')
+  if vim.v.shell_error ~= 0 or not jj_out or not jj_out[1] then
+    return nil
+  end
+  return { root = jj_out[1], kind = 'jj' }
+end
+
+local function resolve_diff_base(kind)
+  if kind == 'jj' then return 'trunk()' end
+
   local candidates = {
     vim.g.branch_diff_base,
     'origin/main',
@@ -48,15 +75,28 @@ local function resolve_diff_base()
   return 'main'
 end
 
-vim.g.branch_diff_base = vim.g.branch_diff_base or resolve_diff_base()
+do
+  local info = root_info()
+  vim.g.branch_diff_kind = info and info.kind or 'git'
+  vim.g.branch_diff_base = vim.g.branch_diff_base or resolve_diff_base(vim.g.branch_diff_kind)
+end
 
 local function set_diff_base(ref)
   if not ref or ref == '' then
     return
   end
-  local ok = git('rev-parse --verify --quiet ' .. vim.fn.shellescape(ref))
-  if not ok then
-    vim.notify(('Invalid git ref: %s'):format(ref), vim.log.levels.WARN)
+  local info = root_info()
+  local kind = info and info.kind or 'git'
+
+  local valid
+  if kind == 'jj' then
+    valid = jj_run({ 'log', '-r', ref, '--limit', '1', '--no-graph' }, info.root) ~= nil
+  else
+    valid = git('rev-parse --verify --quiet ' .. vim.fn.shellescape(ref)) ~= nil
+  end
+
+  if not valid then
+    vim.notify(('Invalid %s ref: %s'):format(kind, ref), vim.log.levels.WARN)
     return
   end
   vim.g.branch_diff_base = ref
@@ -64,18 +104,41 @@ local function set_diff_base(ref)
 end
 
 local function pick_diff_base()
+  local info = root_info()
+  local root = info and info.root
+  local kind = info and info.kind or 'git'
   local items = {}
-  local branches = git("for-each-ref --format='%(refname:short)' refs/heads refs/remotes") or {}
-  local commits = git('log --oneline --no-decorate -n 40') or {}
 
-  for _, ref in ipairs(branches) do
-    items[#items + 1] = ('%s\tbranch\t%s'):format(ref, ref)
-  end
+  if kind == 'jj' then
+    local revs = jj_lines({
+      'log', '-r', 'trunk()..@-', '--no-graph',
+      '-T', 'change_id.short() ++ "\\t" ++ description.first_line() ++ "\\n"',
+    }, root) or {}
+    local bookmarks = jj_lines({ 'bookmark', 'list', '-T', 'name ++ "\\n"' }, root) or {}
 
-  for _, line in ipairs(commits) do
-    local sha, msg = line:match('^(%S+)%s+(.+)$')
-    if sha and msg then
-      items[#items + 1] = ('%s\tcommit\t%s'):format(sha, msg)
+    items[#items + 1] = ('%s\trevset\ttrunk()'):format('trunk()')
+    for _, b in ipairs(bookmarks) do
+      items[#items + 1] = ('%s\tbookmark\t%s'):format(b, b)
+    end
+    for _, line in ipairs(revs) do
+      local cid, desc = line:match('^([^\t]+)\t(.*)$')
+      if cid and cid ~= '' then
+        items[#items + 1] = ('%s\tchange\t%s'):format(cid, desc ~= '' and desc or '(no description)')
+      end
+    end
+  else
+    local branches = git("for-each-ref --format='%(refname:short)' refs/heads refs/remotes") or {}
+    local commits = git('log --oneline --no-decorate -n 40') or {}
+
+    for _, ref in ipairs(branches) do
+      items[#items + 1] = ('%s\tbranch\t%s'):format(ref, ref)
+    end
+
+    for _, line in ipairs(commits) do
+      local sha, msg = line:match('^(%S+)%s+(.+)$')
+      if sha and msg then
+        items[#items + 1] = ('%s\tcommit\t%s'):format(sha, msg)
+      end
     end
   end
 
@@ -99,17 +162,36 @@ local function pick_diff_base()
 end
 
 local function open_branch_diff_files(include_branch_changes)
-  local root = git_root()
-  if not root then
+  local info = root_info()
+  if not info then
     return false
   end
+  local root, kind = info.root, info.kind
 
-  local base = vim.g.branch_diff_base or resolve_diff_base()
+  local base = vim.g.branch_diff_base or resolve_diff_base(kind)
   local changed = {}
-  if include_branch_changes then
-    changed = git('diff --name-only --diff-filter=ACMR ' .. vim.fn.shellescape(base) .. '...HEAD') or {}
+  local status = {}
+
+  if kind == 'jj' then
+    if include_branch_changes then
+      changed = jj_lines({ 'diff', '--name-only', '-r', base .. '..@' }, root) or {}
+    end
+    -- jj has no index — the working copy IS `@`; its uncommitted delta
+    -- against the parent is the "working tree" analog of `git status`.
+    status = jj_lines({ 'diff', '--name-only', '-r', '@-..@' }, root) or {}
+  else
+    if include_branch_changes then
+      changed = git('diff --name-only --diff-filter=ACMR ' .. vim.fn.shellescape(base) .. '...HEAD') or {}
+    end
+    for _, line in ipairs(git('status --porcelain=1') or {}) do
+      local path = line:sub(4)
+      if path:find(' -> ', 1, true) then
+        path = path:match(' -> (.+)$') or path
+      end
+      status[#status + 1] = path
+    end
   end
-  local status = git('status --porcelain=1') or {}
+
   local seen = {}
   local items = {}
 
@@ -120,12 +202,7 @@ local function open_branch_diff_files(include_branch_changes)
     end
   end
 
-  for _, line in ipairs(status) do
-    local path = line:sub(4)
-    if path:find(' -> ', 1, true) then
-      path = path:match(' -> (.+)$') or path
-    end
-
+  for _, path in ipairs(status) do
     if path ~= '' and not seen[path] then
       seen[path] = true
       items[#items + 1] = path
@@ -171,11 +248,97 @@ local function open_branch_diff_files(include_branch_changes)
   return true
 end
 
--- git
+-- jj commit/bookmark pickers — only reachable for bare jj workspaces (no
+-- .git); colocated repos keep the fzf-lua git_* pickers below.
+
+local function show_jj_diff(root, rev, title)
+  local out = jj_run({ 'show', '-r', rev, '--no-color' }, root)
+  if not out then
+    vim.notify('jj show failed for ' .. rev, vim.log.levels.WARN)
+    return
+  end
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype = 'nofile'
+  vim.bo[buf].filetype = 'diff'
+  vim.api.nvim_buf_set_name(buf, 'jj://show/' .. title)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(out, '\n'))
+  vim.cmd('botright split')
+  vim.api.nvim_win_set_buf(vim.api.nvim_get_current_win(), buf)
+end
+
+local function jj_commits_picker(root)
+  local lines = jj_lines({
+    'log', '-r', 'trunk()..@', '--no-graph',
+    '-T', 'change_id.short() ++ "\\t" ++ description.first_line() ++ "\\n"',
+  }, root) or {}
+
+  local items = {}
+  for _, line in ipairs(lines) do
+    local cid, desc = line:match('^([^\t]+)\t(.*)$')
+    if cid and cid ~= '' then
+      items[#items + 1] = ('%s\t%s'):format(cid, desc ~= '' and desc or '(no description)')
+    end
+  end
+
+  fzf.fzf_exec(items, {
+    prompt = 'jj-commits> ',
+    fzf_opts = { ['--delimiter'] = '\t', ['--tiebreak'] = 'index' },
+    actions = {
+      ['default'] = function(selected)
+        if not selected or not selected[1] then return end
+        local cid = selected[1]:match('^([^\t]+)')
+        show_jj_diff(root, cid, cid)
+      end,
+    },
+  })
+end
+
+local function jj_bookmarks_picker(root)
+  local items = jj_lines({ 'bookmark', 'list', '-T', 'name ++ "\\n"' }, root) or {}
+
+  fzf.fzf_exec(items, {
+    prompt = 'jj-bookmarks> ',
+    fzf_opts = { ['--tiebreak'] = 'index' },
+    actions = {
+      ['default'] = function(selected)
+        if not selected or not selected[1] then return end
+        show_jj_diff(root, selected[1], selected[1])
+      end,
+    },
+  })
+end
+
+-- git / jj — kind dispatched per-repo; colocated repos keep the git path.
 map('n', '<leader>gf', fzf.git_files, opts)
-map('n', '<leader>gc', fzf.git_commits, opts)
-map('n', '<leader>gb', fzf.git_branches, opts)
-map('n', '<leader>gs', fzf.git_status, opts)
+
+map('n', '<leader>gc', function()
+  local info = root_info()
+  if info and info.kind == 'jj' then
+    jj_commits_picker(info.root)
+  else
+    fzf.git_commits()
+  end
+end, opts)
+
+map('n', '<leader>gb', function()
+  local info = root_info()
+  if info and info.kind == 'jj' then
+    jj_bookmarks_picker(info.root)
+  else
+    fzf.git_branches()
+  end
+end, opts)
+
+map('n', '<leader>gs', function()
+  local info = root_info()
+  if info and info.kind == 'jj' then
+    if not open_branch_diff_files(false) then
+      vim.notify('No changed files in @', vim.log.levels.INFO)
+    end
+  else
+    fzf.git_status()
+  end
+end, opts)
 
 -- LSP symbols
 map('n', '<leader>ss', fzf.lsp_document_symbols, opts)

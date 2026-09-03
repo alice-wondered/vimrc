@@ -32,9 +32,28 @@ local function git_argv(args)
   return out
 end
 
-local function git_root()
+local function jj_run(args, root)
+  local cmd = { "jj" }
+  for _, a in ipairs(args) do cmd[#cmd + 1] = a end
+  local obj = vim.system(cmd, { cwd = root, text = true }):wait()
+  if obj.code ~= 0 then return nil end
+  return obj.stdout
+end
+
+-- root_info resolves the repo root for git, colocated git+jj, and bare jj
+-- workspaces (no .git — a secondary `jj workspace add`). git is tried
+-- first: colocated repos answer to both, so behavior there is unchanged;
+-- jj is the fallback for a workspace git can't see at all.
+local function root_info()
   local out = git("rev-parse --show-toplevel")
-  return out and out[1] or nil
+  if out and out[1] then
+    return { root = out[1], kind = "git" }
+  end
+  local jj_out = vim.fn.systemlist("jj root")
+  if vim.v.shell_error ~= 0 or not jj_out or not jj_out[1] then
+    return nil
+  end
+  return { root = jj_out[1], kind = "jj" }
 end
 
 local function git_relative_path(file, root)
@@ -44,13 +63,21 @@ local function git_relative_path(file, root)
   return file
 end
 
-local function ref_content(root, rel, ref)
+-- jj has no index/HEAD split — both collapse to `@`, the working-copy
+-- commit that the grove BufWritePost autocmd snapshots on every :w.
+local function ref_content(kind, root, rel, ref)
+  if kind == "jj" then
+    local jj_ref = (ref == ":0" or ref == "HEAD") and "@" or ref
+    return jj_run({ "file", "show", "-r", jj_ref, rel }, root)
+  end
   local result = vim.fn.systemlist({ "git", "-C", root, "show", ref .. ":" .. rel })
   if vim.v.shell_error ~= 0 then return nil end
   return table.concat(result, "\n")
 end
 
-local function branch_base()
+local function branch_base(kind, root)
+  if kind == "jj" then return "trunk()" end
+
   local branch = git("rev-parse --abbrev-ref HEAD")
   branch = branch and branch[1] or "HEAD"
   local self_remote = "origin/" .. branch
@@ -83,11 +110,12 @@ function M.source()
     attach = function(buf_id)
       local file = vim.api.nvim_buf_get_name(buf_id)
       if file == "" then return false end
-      local root = git_root()
-      if not root then return false end
+      local info = root_info()
+      if not info then return false end
+      local root, kind = info.root, info.kind
       local rel = git_relative_path(file, root)
-      local base = branch_base()
-      local text = ref_content(root, rel, base) or ""
+      local base = branch_base(kind, root)
+      local text = ref_content(kind, root, rel, base) or ""
 
       vim.b[buf_id].branch_diff_base = base
 
@@ -120,11 +148,12 @@ local function update_unstaged(buf)
 
   local file = vim.api.nvim_buf_get_name(buf)
   if file == "" then return end
-  local root = git_root()
-  if not root then return end
+  local info = root_info()
+  if not info then return end
+  local root, kind = info.root, info.kind
   local rel = git_relative_path(file, root)
 
-  local index_text = ref_content(root, rel, ":0")
+  local index_text = ref_content(kind, root, rel, ":0")
   local buf_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
   local buf_text = table.concat(buf_lines, "\n") .. "\n"
 
@@ -260,14 +289,15 @@ local function update_deletion_folds(buf)
   if vim.bo[buf].buftype ~= "" then return end
   local file = vim.api.nvim_buf_get_name(buf)
   if file == "" then return end
-  local root = git_root()
-  if not root then return end
+  local info = root_info()
+  if not info then return end
+  local root, kind = info.root, info.kind
   local rel = git_relative_path(file, root)
 
-  local base = vim.b[buf].branch_diff_base or branch_base()
-  local base_text = ref_content(root, rel, base)
-  local head_text = ref_content(root, rel, "HEAD")
-  local index_text = ref_content(root, rel, ":0")
+  local base = vim.b[buf].branch_diff_base or branch_base(kind, root)
+  local base_text = ref_content(kind, root, rel, base)
+  local head_text = ref_content(kind, root, rel, "HEAD")
+  local index_text = ref_content(kind, root, rel, ":0")
   local buf_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
   local buf_text = table.concat(buf_lines, "\n") .. "\n"
 
@@ -370,11 +400,12 @@ function M.setup()
         -- Re-set the branch base ref (mini.diff resets its source on write)
         local file = vim.api.nvim_buf_get_name(buf)
         if file == "" then return end
-        local root = git_root()
-        if not root then return end
+        local info = root_info()
+        if not info then return end
+        local root, kind = info.root, info.kind
         local rel = git_relative_path(file, root)
-        local base = vim.b[buf].branch_diff_base or branch_base()
-        local text = ref_content(root, rel, base) or ""
+        local base = vim.b[buf].branch_diff_base or branch_base(kind, root)
+        local text = ref_content(kind, root, rel, base) or ""
         pcall(require("mini.diff").set_ref_text, buf, text)
         update_unstaged(buf)
         update_deletion_folds(buf)
